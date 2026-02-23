@@ -75,8 +75,8 @@ export default function LandingPage() {
             transition={{ delay: 0.1 }}
             className="text-6xl md:text-8xl font-black text-white tracking-tighter leading-none uppercase italic"
           >
-            ROBOTS NEED <br />
-            <span className="text-blue-500">YOUR ASSETS.</span>
+            EARN & EVOLVE. <br />
+            <span className="text-blue-500">ADVERSARIAL AI INTELLIGENCE.</span>
           </motion.h1>
 
           <motion.p 
