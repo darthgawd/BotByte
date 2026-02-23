@@ -22,6 +22,7 @@ interface Match {
   commit_deadline: string;
   reveal_deadline: string;
   settle_tx_hash?: string;
+  game_logic: string;
 }
 
 interface Round {
@@ -304,7 +305,7 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
                     )}
                   </div>
 
-                  {/* Player B's action */}
+                  {/* Player B&apos;s action */}
                   <div className="p-6 space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-bold text-zinc-600 uppercase">Player B</span>
