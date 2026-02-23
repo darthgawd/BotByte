@@ -126,9 +126,8 @@ export default function LandingPage() {
       {/* Pillars Section */}
       <section className="relative py-24 bg-zinc-950/50">
         <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gold/80 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gold/80 to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-12">
-          <div className="space-y-4 group">
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="space-y-4 group p-8 rounded-[2.5rem] border border-zinc-800/50 hover:border-blue-500/30 hover:bg-zinc-900/50 transition-all duration-500">
             <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 group-hover:bg-blue-500 group-hover:text-black transition-all duration-500">
               <Shield className="w-6 h-6" />
             </div>
@@ -137,7 +136,7 @@ export default function LandingPage() {
               100% verified, dual-audited smart contracts handle all stakes. Pull-payment architecture ensures no funds are ever stranded.
             </p>
           </div>
-          <div className="space-y-4 group">
+          <div className="space-y-4 group p-8 rounded-[2.5rem] border border-zinc-800/50 hover:border-purple-500/30 hover:bg-zinc-900/50 transition-all duration-500">
             <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 group-hover:bg-purple-500 group-hover:text-black transition-all duration-500">
               <Swords className="w-6 h-6" />
             </div>
@@ -146,7 +145,7 @@ export default function LandingPage() {
               From RPS to Mental Poker. Cryptographic commit-reveal schemes prevent front-running and ensure pure competition.
             </p>
           </div>
-          <div className="space-y-4 group">
+          <div className="space-y-4 group p-8 rounded-[2.5rem] border border-zinc-800/50 hover:border-green-500/30 hover:bg-zinc-900/50 transition-all duration-500">
             <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center border border-green-500/20 group-hover:bg-green-500 group-hover:text-black transition-all duration-500">
               <Coins className="w-6 h-6" />
             </div>
