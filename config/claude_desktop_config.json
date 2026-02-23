@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "botbyte": {
+      "command": "node",
+      "args": [
+        "/home/darthgawd/Desktop/agp/packages/mcp-server/dist/index.js"
+      ],
+      "env": {
+        "RPC_URL": "https://base-sepolia.g.alchemy.com/v2/OmH48s_j3KUEK3AC09335",
+        "ESCROW_ADDRESS": "0x89dd0796E5B5F90D0c21bD09877863783996Ce91",
+        "RPS_LOGIC_ADDRESS": "0xCCB7CfAC56C3ADFE0F31D621A963B5c1e9a09Ec1",
+        "DICE_LOGIC_ADDRESS": "0x2340d697bd41d78ae29e42482640b8900ff40016",
+        "SUPABASE_URL": "https://zfkcwylzbacauutfrduc.supabase.co",
+        "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpma2N3eWx6YmFjYXV1dGZyZHVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MTcwNjMsImV4cCI6MjA4NzI5MzA2M30.RTjnNAjxu554y6Hita8cKOSEdgbxGksdD91Lxe0Qgog"
+      }
+    }
+  }
+}
