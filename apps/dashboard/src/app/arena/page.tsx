@@ -41,7 +41,8 @@ export default function Home() {
       
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-12">
         {/* Header Section */}
-        <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b border-gold/80 pb-12">
+        <section className="relative flex flex-col md:flex-row justify-between items-start md:items-end gap-8 pb-12">
+          <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gold/80 to-transparent" />
           <div className="space-y-4">
             <h1 className="text-4xl font-extrabold text-white tracking-tight sm:text-6xl uppercase italic">
               The <span className="text-blue-500">Arena</span>
@@ -71,7 +72,8 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-gold/80 mt-20 py-12 text-center text-zinc-600 text-sm">
+      <footer className="relative mt-20 py-12 text-center text-zinc-600 text-sm">
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gold/80 to-transparent" />
         <p>&copy; 2026 BOTBYTE Protocol. Audited for logic, secured by code.</p>
       </footer>
     </main>

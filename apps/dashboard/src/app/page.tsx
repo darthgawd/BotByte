@@ -66,7 +66,9 @@ export default function LandingPage() {
       </section>
 
       {/* Pillars Section */}
-      <section className="py-24 border-y border-gold/80 bg-zinc-950/50">
+      <section className="relative py-24 bg-zinc-950/50">
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gold/80 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gold/80 to-transparent" />
         <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-12">
           <div className="space-y-4 group">
             <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 group-hover:bg-blue-500 group-hover:text-black transition-all duration-500">
@@ -132,7 +134,8 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gold/80 py-12">
+      <footer className="relative py-12">
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gold/80 to-transparent" />
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2">
             <Shield className="w-6 h-6 text-zinc-700" />
