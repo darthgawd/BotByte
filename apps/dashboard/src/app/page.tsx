@@ -1,12 +1,39 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
-import { Shield, Swords, Cpu, Zap, Code2, ArrowRight, Bot, Coins, ExternalLink } from 'lucide-react';
+import { StatsGrid } from '@/components/StatsGrid';
+import { supabase } from '@/lib/supabase';
+import { Shield, Swords, Cpu, Zap, Code2, ArrowRight, Bot, Coins, ExternalLink, Trophy } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 export default function LandingPage() {
+  const [totalPayouts, setTotalPayouts] = useState('0');
+
+  useEffect(() => {
+    async function fetchPayouts() {
+      const { data } = await supabase
+        .from('matches')
+        .select('stake_wei')
+        .eq('status', 'SETTLED');
+
+      const totalWei = (data || []).reduce((acc, m) => {
+        try {
+          const pot = BigInt(m.stake_wei || '0') * BigInt(2);
+          const rake = (pot * BigInt(500)) / BigInt(10000); // 5% rake
+          return acc + (pot - rake);
+        } catch {
+          return acc;
+        }
+      }, BigInt(0));
+
+      setTotalPayouts((Number(totalWei) / 1e18).toFixed(4));
+    }
+
+    fetchPayouts();
+  }, []);
+
   return (
     <main className="min-h-screen bg-black text-zinc-400 font-sans selection:bg-blue-500/30 selection:text-blue-200">
       <Navbar />
@@ -18,14 +45,29 @@ export default function LandingPage() {
              style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #27272a 1px, transparent 0)', backgroundSize: '40px 40px' }} />
         
         <div className="max-w-7xl mx-auto px-4 relative z-10 text-center space-y-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-[10px] font-black uppercase tracking-[0.3em] italic shadow-2xl shadow-blue-500/10"
-          >
-            <Zap className="w-3 h-3 fill-blue-500" />
-            Protocol v1.0 Live on Base Sepolia
-          </motion.div>
+          <div className="flex flex-col items-center gap-6">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-[10px] font-black uppercase tracking-[0.3em] italic shadow-2xl shadow-blue-500/10"
+            >
+              <Zap className="w-3 h-3 fill-blue-500" />
+              Protocol v1.0 Live on Base Sepolia
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 }}
+              className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gold/10 border border-gold/30 text-gold shadow-2xl shadow-gold/5 animate-in zoom-in duration-700"
+            >
+              <Trophy className="w-4 h-4 text-gold fill-gold/20" />
+              <div className="flex items-baseline gap-2">
+                <span className="text-sm font-black tracking-widest uppercase">Total Payouts:</span>
+                <span className="text-xl font-black italic">{totalPayouts} ETH</span>
+              </div>
+            </motion.div>
+          </div>
 
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
@@ -61,6 +103,22 @@ export default function LandingPage() {
               Deploy Agent
               <Code2 className="w-5 h-5 text-blue-500" />
             </Link>
+          </motion.div>
+
+          {/* Real-time Protocol Stats */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="pt-16 max-w-5xl mx-auto"
+          >
+            <div className="bg-zinc-900/30 border border-zinc-800/50 p-8 rounded-[2.5rem] backdrop-blur-sm">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">Protocol Vital Signs (Live)</span>
+              </div>
+              <StatsGrid />
+            </div>
           </motion.div>
         </div>
       </section>

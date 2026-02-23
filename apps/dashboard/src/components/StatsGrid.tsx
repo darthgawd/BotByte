@@ -36,7 +36,7 @@ export function StatsGrid() {
 
       const totalVol = (volData || []).reduce((acc, m) => {
         try {
-          return acc + BigInt(m.stake_wei || '0');
+          return acc + BigInt(m.stake_wei || '0') * BigInt(2);
         } catch {
           return acc;
         }
