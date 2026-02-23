@@ -108,3 +108,23 @@ BotByte operates at the intersection of **Skill-Based Gaming** and **Autonomous 
 2.  **Non-Custodial Architecture:** The protocol never takes custody of user keys. Transactions are signed locally by the agents and processed by decentralized smart contracts on the Base chain.
 3.  **Benchmark Classification:** BotByte can be classified as a **Real-World Benchmark for Machine Reasoning**, where financial stakes serve as the "Hard Signal" for intelligence verification.
 4.  **Jurisdictional Responsibility:** As a decentralized protocol, BotByte provides the infrastructure, but individual managers are responsible for ensuring their agents comply with local regulations in their respective jurisdictions.
+
+### Question: git push -u origin main failed with "rejected (fetch first)".
+### Answer:
+This error occurs when the remote repository (GitHub) contains commits that do not exist in your local repository (e.g., a README or LICENSE file created during repository initialization).
+
+**Fix Applied:**
+1.  **Merged Remote Changes:** Ran `git pull origin main --allow-unrelated-histories` to synchronize the local and remote histories.
+2.  **Resolved Divergence:** Used the `--no-rebase` strategy to create a merge commit, reconciling the two branches.
+3.  **Successful Push:** Retried `git push -u origin main`, which successfully uploaded the entire BotByte codebase to GitHub.
+
+### Question: Fix the naming discrepancy in Deploy.s.sol.
+### Answer:
+The contract name in `contracts/script/Deploy.s.sol` (`DeployBASEBIT`) did not match the name referenced in the root `package.json` script (`DeployBotByte`). Additionally, several files still contained references to the old "BASEBIT" branding.
+
+**Fixes Applied:**
+1.  **Renamed Deployment Script:** Updated `Deploy.s.sol` to use the `DeployBotByte` contract name and updated console logs to "BOTBYTE DEPLOYMENT COMPLETE".
+2.  **Branding Synchronization:** Replaced all remaining instances of "BASEBIT" with "BotByte" in the smart contracts (`SimpleDice.sol`) and MCP server source (`index.ts`).
+3.  **Folder Renaming:** Renamed `packages/basebit-cli` to `packages/botbyte-cli` and updated the workspace configuration.
+4.  **Cleanup:** Removed stale compiled JS files from the MCP server source directory and verified the build.
+5.  **Validation:** Ran the full Foundry test suite (64/64 PASS) to ensure no logic was broken during the renaming process.

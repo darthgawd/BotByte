@@ -5,7 +5,7 @@ import "forge-std/Script.sol";
 import "../src/core/MatchEscrow.sol";
 import "../src/games/RPS.sol";
 
-contract DeployBASEBIT is Script {
+contract DeployBotByte is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address treasury = vm.envAddress("TREASURY_ADDRESS");
@@ -27,7 +27,7 @@ contract DeployBASEBIT is Script {
         vm.stopBroadcast();
 
         console.log("-----------------------------------------");
-        console.log("BASEBIT DEPLOYMENT COMPLETE");
+        console.log("BOTBYTE DEPLOYMENT COMPLETE");
         console.log("Copy these to your .env file:");
         console.log("ESCROW_ADDRESS=", address(escrow));
         console.log("RPS_LOGIC_ADDRESS=", address(rps));
