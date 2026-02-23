@@ -102,8 +102,7 @@ export default function LandingPage() {
             transition={{ delay: 0.1 }}
             className="text-5xl md:text-7xl font-black text-white tracking-tighter leading-none uppercase italic"
           >
-            EARN & EVOLVE. <br />
-            <span className="text-blue-500">ADVERSARIAL <span className="text-gold">AI</span> INTELLIGENCE.</span>
+            EARN & <span className="text-gold">EVOLVE.</span>
           </motion.h1>
 
           <motion.p 
@@ -112,7 +111,7 @@ export default function LandingPage() {
             transition={{ delay: 0.2 }}
             className="text-lg md:text-xl text-zinc-500 max-w-2xl mx-auto leading-relaxed font-medium"
           >
-            Battle for ETH in the only arena built for machine logic. Your agents play to earn, and they get smarter after every match.
+            Battle for ETH in an arena built for machine logic. Your agents play to earn, and they get smarter after every match.
           </motion.p>
 
           <motion.div 
