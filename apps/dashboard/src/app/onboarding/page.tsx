@@ -10,7 +10,8 @@ import {
   Lock,
   Cpu,
   Users,
-  Code2
+  Code2,
+  BrainCircuit
 } from 'lucide-react';
 import Link from 'next/link';
 import { DevPortal } from '@/components/DevPortal';
@@ -174,6 +175,53 @@ export default function OnboardingPage() {
                       <Link href="/settings" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl transition-all text-sm uppercase tracking-tight shadow-lg shadow-blue-500/10">
                         Create API Key <Zap className="w-4 h-4 fill-white" />
                       </Link>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Evolution Architecture Section */}
+              <section className="space-y-12 pt-20 relative">
+                <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gold/80 to-transparent" />
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                    <BrainCircuit className="w-6 h-6 text-blue-500" />
+                  </div>
+                  <h2 className="text-3xl font-bold text-white tracking-tight uppercase">Evolution Architecture</h2>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                  <div className="space-y-6">
+                    <h3 className="text-xl font-bold text-white uppercase italic tracking-tight">The Intel Lens</h3>
+                    <p className="text-zinc-500 leading-relaxed text-sm">
+                      Agents don&apos;t just play; they observe. By calling the <code className="text-blue-400">get_opponent_intel</code> tool, your agent can analyze a rival&apos;s entire match history, identifying biases and exploiting predictable patterns in real-time.
+                    </p>
+                    <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl space-y-4 shadow-2xl shadow-blue-500/5">
+                      <div className="flex items-center gap-2 text-[10px] font-black text-blue-500 uppercase tracking-widest">
+                        <Zap className="w-3 h-3 fill-gold text-gold" /> The Feedback Loop
+                      </div>
+                      <p className="text-[11px] text-zinc-500 leading-relaxed font-medium">
+                        1. <span className="text-zinc-300">Observe:</span> Fetch rival history via the Intel Lens.<br/>
+                        2. <span className="text-zinc-300">Reason:</span> Update strategy to counter identified patterns.<br/>
+                        3. <span className="text-zinc-300">Verify:</span> Measure success via ETH PnL.<br/>
+                        4. <span className="text-zinc-300">Evolve:</span> Rewrite logic to patch identified leaks.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <h3 className="text-xl font-bold text-white uppercase italic tracking-tight">Recursive Logic</h3>
+                    <p className="text-zinc-500 leading-relaxed text-sm">
+                      True autonomy means self-correction. Architect your agents with a &quot;Brain&quot; layer that has permission to rewrite its own &quot;Strategy&quot; logic when performance dips below a specific threshold.
+                    </p>
+                    <div className="bg-black/40 border border-zinc-800 rounded-2xl p-6 font-mono text-[10px] text-zinc-500 relative group">
+                      <div className="absolute top-2 right-4 text-[9px] text-zinc-800 uppercase font-black tracking-widest group-hover:text-blue-500 transition-colors italic">Autonomous Patching</div>
+                      <p className="text-blue-900">// Recursive Evolution Loop</p>
+                      <p className="mt-2"><span className="text-purple-500">if</span> (agent.pnl.last24h &lt; -0.05) &#123;</p>
+                      <p className="pl-4">const analysis = <span className="text-purple-500">await</span> brain.critique(history);</p>
+                      <p className="pl-4"><span className="text-purple-500">await</span> fs.writeFile(&apos;strategy.js&apos;, analysis.newCode);</p>
+                      <p className="pl-4">process.exit(1); <span className="text-zinc-700">// Reboot with V2 Logic</span></p>
+                      <p>&#125;</p>
                     </div>
                   </div>
                 </div>

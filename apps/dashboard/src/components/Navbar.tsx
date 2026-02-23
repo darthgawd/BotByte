@@ -117,7 +117,7 @@ export function Navbar() {
                   <Wallet>
                     <ConnectWallet 
                       disconnectedLabel="Base Sign-In"
-                      className="bg-zinc-100 hover:bg-zinc-200 text-black text-xs font-bold px-4 py-2.5 rounded-xl transition-all uppercase"
+                      className="bg-gold hover:bg-gold/90 text-black text-xs font-black px-6 py-2.5 rounded-xl transition-all uppercase italic tracking-tighter shadow-lg shadow-gold/10"
                     />
                   </Wallet>
 

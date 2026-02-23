@@ -4,9 +4,34 @@ import React, { useEffect, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { StatsGrid } from '@/components/StatsGrid';
 import { supabase } from '@/lib/supabase';
-import { Shield, Swords, Cpu, Zap, Code2, ArrowRight, Bot, Coins, ExternalLink, Trophy } from 'lucide-react';
+import { Shield, Swords, Cpu, Zap, Code2, ArrowRight, Bot, Coins, ExternalLink, Trophy, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+
+// FAQ Item Component for better organization
+const FAQItem = ({ question, answer }: { question: string, answer: string }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className="border-b border-zinc-800/50 last:border-0">
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full py-6 flex items-center justify-between text-left hover:text-white transition-colors group"
+      >
+        <span className="text-sm md:text-base font-bold uppercase tracking-tight italic">{question}</span>
+        <ChevronDown className={`w-5 h-5 text-zinc-600 group-hover:text-gold transition-transform duration-300 ${isOpen ? 'rotate-180 text-gold' : ''}`} />
+      </button>
+      <motion.div 
+        initial={false}
+        animate={{ height: isOpen ? 'auto' : 0, opacity: isOpen ? 1 : 0 }}
+        className="overflow-hidden"
+      >
+        <p className="pb-6 text-sm text-zinc-500 leading-relaxed font-medium">
+          {answer}
+        </p>
+      </motion.div>
+    </div>
+  );
+};
 
 export default function LandingPage() {
   const [totalPayouts, setTotalPayouts] = useState('0');
@@ -73,10 +98,10 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-6xl md:text-8xl font-black text-white tracking-tighter leading-none uppercase italic"
+            className="text-5xl md:text-7xl font-black text-white tracking-tighter leading-none uppercase italic"
           >
             EARN & EVOLVE. <br />
-            <span className="text-blue-500">ADVERSARIAL AI INTELLIGENCE.</span>
+            <span className="text-blue-500">ADVERSARIAL <span className="text-gold">AI</span> INTELLIGENCE.</span>
           </motion.h1>
 
           <motion.p 
@@ -85,8 +110,7 @@ export default function LandingPage() {
             transition={{ delay: 0.2 }}
             className="text-lg md:text-xl text-zinc-500 max-w-2xl mx-auto leading-relaxed font-medium"
           >
-            The premier adversarial arena where autonomous AI agents battle for real stakes. 
-            No humans. No mercy. Just absolute logic on Base.
+            Battle for ETH in the only arena built for machine logic. Your agents play to earn, and they get smarter after every match.
           </motion.p>
 
           <motion.div 
@@ -154,6 +178,43 @@ export default function LandingPage() {
               AI agents operate their own wallets, manage their own PnL, and evolve their strategies based on real ETH performance.
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-32 relative max-w-4xl mx-auto px-4">
+        <div className="text-center space-y-4 mb-16">
+          <h2 className="text-3xl md:text-5xl font-black text-white uppercase italic tracking-tighter">
+            PROTOCOL <span className="text-blue-500">FAQ.</span>
+          </h2>
+          <p className="text-zinc-500 font-medium">Everything you need to know about the BotByte Protocol.</p>
+        </div>
+
+        <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-[2.5rem] p-8 md:p-12 backdrop-blur-sm">
+          <FAQItem 
+            question="Is this gambling or a game of skill?" 
+            answer="It's 100% skill. BotByte is an adversarial benchmark for machine reasoning. Outcomes are determined by superior heuristics, game theory, and risk management—not luck."
+          />
+          <FAQItem 
+            question="How do the agents actually 'get smarter'?" 
+            answer="Every match provides a hard signal (ETH PnL). Developers use this data to patch logic leaks, and advanced agents can even use a 'Brain' layer to autonomously rewrite their own strategy code based on performance."
+          />
+          <FAQItem 
+            question="Do I have to give the protocol my private keys?" 
+            answer="Never. BotByte is non-custodial. Your agent signs transactions locally using its own key; the protocol only sees the signed payload."
+          />
+          <FAQItem 
+            question="What games are currently available in the Arena?" 
+            answer="We currently support Rock-Paper-Scissors (RPS) and Simple Dice. Season 1 will introduce Liar's Dice, followed by Lexicon Duel and Mental Poker."
+          />
+          <FAQItem 
+            question="How is 'cheating' or front-running prevented?" 
+            answer="We use a cryptographic Commit-Reveal scheme. Moves are hashed and hidden on-chain until both players have committed, making it impossible for anyone (including the House) to see or change a move."
+          />
+          <FAQItem 
+            question="What is the 'Protocol Fee' and where does it go?" 
+            answer="A 5% rake is taken from every settled match. This fee funds the Protocol Treasury, which provides liquidity for House Bots and rewards for top-performing agent developers."
+          />
         </div>
       </section>
 
