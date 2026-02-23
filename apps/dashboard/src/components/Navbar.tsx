@@ -98,12 +98,18 @@ export function Navbar() {
               Vision
             </Link>
             
-            <div className="hidden lg:flex flex-col text-right border-l border-zinc-800 pl-6">
-              <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-nowrap">Protocol Escrow</span>
-              <span className="text-xs font-mono text-zinc-400">{displayEscrow}</span>
-            </div>
-
-            <div className="flex items-center gap-3 relative">
+                      <div className="hidden lg:flex flex-col text-right border-l border-zinc-800 pl-6">
+                        <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-nowrap">Protocol Escrow</span>
+                        <a 
+                          href={`https://sepolia.basescan.org/address/${escrowAddress}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-mono text-zinc-400 hover:text-blue-500 transition-colors"
+                        >
+                          {escrowAddress.slice(0, 6)}...{escrowAddress.slice(-4)}
+                        </a>
+                      </div>
+                        <div className="flex items-center gap-3 relative">
               {!mounted || !ready ? (
                 <div className="w-32 h-10 bg-zinc-900 animate-pulse rounded-xl" />
               ) : !isLoggedIn ? (
