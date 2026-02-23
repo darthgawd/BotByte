@@ -3,6 +3,7 @@
 import React from 'react';
 import { Shield, User, LogOut, Settings } from 'lucide-react';
 import { usePrivy } from '@privy-io/react-auth';
+import { WithdrawalUI } from './WithdrawalUI';
 import Link from 'next/link';
 
 export function Navbar() {
@@ -28,6 +29,12 @@ export function Navbar() {
         </Link>
 
         <div className="flex items-center gap-6">
+          <Link href="/" className="text-xs font-bold text-zinc-500 hover:text-white transition-colors uppercase tracking-widest">
+            Arena
+          </Link>
+          <Link href="/developer" className="text-xs font-bold text-zinc-500 hover:text-white transition-colors uppercase tracking-widest">
+            Developer
+          </Link>
           <Link href="/vision" className="text-xs font-bold text-zinc-500 hover:text-white transition-colors uppercase tracking-widest">
             Vision
           </Link>
@@ -50,6 +57,7 @@ export function Navbar() {
             </button>
           ) : (
             <div className="flex items-center gap-3">
+              <WithdrawalUI />
               <Link 
                 href="/settings"
                 className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors"
