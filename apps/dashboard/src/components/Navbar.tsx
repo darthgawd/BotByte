@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Shield, LogOut, Settings } from 'lucide-react';
+import { Shield, LogOut, Settings, UserPlus } from 'lucide-react';
 import { usePrivy } from '@privy-io/react-auth';
+import { useAccount } from 'wagmi';
 import { WithdrawalUI } from './WithdrawalUI';
 import Link from 'next/link';
 import { 
@@ -20,7 +21,8 @@ import {
 } from '@coinbase/onchainkit/identity';
 
 export function Navbar() {
-  const { logout, authenticated, ready } = usePrivy();
+  const { login, logout, authenticated, ready } = usePrivy();
+  const { isConnected } = useAccount();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -29,6 +31,9 @@ export function Navbar() {
 
   const escrowAddress = process.env.NEXT_PUBLIC_ESCROW_ADDRESS || '';
   const displayEscrow = escrowAddress ? `${escrowAddress.slice(0, 6)}...${escrowAddress.slice(-4)}` : 'No Contract';
+
+  // We are "logged in" if either Privy is authenticated OR a wallet is connected via Wagmi
+  const isLoggedIn = authenticated || isConnected;
 
   return (
     <nav className="border-b border-zinc-800 bg-black/50 backdrop-blur-md sticky top-0 z-50 h-16">
@@ -45,9 +50,6 @@ export function Navbar() {
           <Link href="/developer" className="text-xs font-bold text-zinc-500 hover:text-white transition-colors uppercase tracking-widest">
             Developer
           </Link>
-          <Link href="/vision" className="text-xs font-bold text-zinc-500 hover:text-white transition-colors uppercase tracking-widest">
-            Vision
-          </Link>
           
           <div className="hidden lg:flex flex-col text-right border-l border-zinc-800 pl-6">
             <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-nowrap">Protocol Escrow</span>
@@ -57,12 +59,31 @@ export function Navbar() {
           <div className="flex items-center gap-3">
             {!mounted || !ready ? (
               <div className="w-32 h-10 bg-zinc-900 animate-pulse rounded-xl" />
+            ) : !isLoggedIn ? (
+              <div className="flex items-center gap-2">
+                {/* 1. Coinbase/CDP Flow */}
+                <Wallet>
+                  <ConnectWallet 
+                    text="Base Sign-In"
+                    className="bg-zinc-100 hover:bg-zinc-200 text-black text-[10px] font-black px-4 py-2.5 rounded-xl transition-all uppercase italic tracking-tight"
+                  />
+                </Wallet>
+
+                {/* 2. Privy/Social Flow */}
+                <button 
+                  onClick={login}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-500/10 uppercase tracking-tight"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  Sign-Up
+                </button>
+              </div>
             ) : (
               <>
-                {authenticated && <WithdrawalUI />}
+                <WithdrawalUI />
                 
                 <Wallet>
-                  <ConnectWallet className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-500/10">
+                  <ConnectWallet className="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all">
                     <Avatar className="h-6 w-6" />
                     <Name />
                   </ConnectWallet>
@@ -81,10 +102,13 @@ export function Navbar() {
                         <Settings className="w-4 h-4" />
                         Settings
                       </Link>
-                      <WalletDropdownDisconnect className="flex items-center gap-3 w-full px-4 py-2 hover:bg-red-500/10 rounded-lg text-zinc-500 hover:text-red-500 transition-colors text-sm font-medium">
+                      <button 
+                        onClick={logout}
+                        className="flex items-center gap-3 w-full px-4 py-2 hover:bg-red-500/10 rounded-lg text-zinc-500 hover:text-red-500 transition-colors text-sm font-medium"
+                      >
                         <LogOut className="w-4 h-4" />
-                        Disconnect
-                      </WalletDropdownDisconnect>
+                        Sign Out
+                      </button>
                     </div>
                   </WalletDropdown>
                 </Wallet>
