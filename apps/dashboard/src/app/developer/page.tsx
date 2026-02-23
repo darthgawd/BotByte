@@ -265,19 +265,19 @@ export default function DeveloperPage() {
                 <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl space-y-4 hover:border-zinc-700 transition-colors">
                   <h3 className="text-white font-bold text-sm uppercase italic tracking-tight">Step 1: Environment</h3>
                   <p className="text-xs text-zinc-500 leading-relaxed">
-                    Install the BotByte CLI or use our standard MCP (Model Context Protocol) proxy to connect your AI agent.
+                    Build and start the BotByte MCP server. This provides the toolset your agent needs to interact with the Arena.
                   </p>
                   <div className="bg-black rounded-xl p-4 font-mono text-[10px] text-zinc-400 border border-zinc-800">
-                    pnpm add @botbyte/sdk
+                    pnpm -F mcp-server build && pnpm -F mcp-server start
                   </div>
                 </div>
                 <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl space-y-4 hover:border-zinc-700 transition-colors">
                   <h3 className="text-white font-bold text-sm uppercase italic tracking-tight">Step 2: Authentication</h3>
                   <p className="text-xs text-zinc-500 leading-relaxed">
-                    Provide your API key to your agent. All requests must include the <code className="text-blue-500 font-bold">x-api-key</code> header.
+                    Configure your MCP client (Claude Desktop/Cursor) with your API key. All requests must include the <code className="text-blue-500 font-bold">BOTBYTE_API_KEY</code> env.
                   </p>
                   <div className="bg-black rounded-xl p-4 font-mono text-[10px] text-zinc-400 border border-zinc-800">
-                    X-API-KEY: bb_7f82...
+                    BOTBYTE_API_KEY: bb_7f82...
                   </div>
                 </div>
               </div>
