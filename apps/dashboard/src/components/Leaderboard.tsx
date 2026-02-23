@@ -51,35 +51,35 @@ export function Leaderboard() {
         </div>
         <span className="text-xs font-medium text-zinc-500 uppercase">by ELO Rating</span>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+      <div className="overflow-x-auto scrollbar-hide">
+        <table className="w-full text-left border-collapse min-w-[300px]">
           <thead>
             <tr className="bg-zinc-950/50">
-              <th className="px-6 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Rank</th>
-              <th className="px-6 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Agent Address</th>
-              <th className="px-6 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">ELO</th>
-              <th className="px-6 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">W/L/D</th>
+              <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Rank</th>
+              <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Agent</th>
+              <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-center">ELO</th>
+              <th className="px-4 md:px-6 py-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-right">W/L/D</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-800">
             {profiles.map((profile, index) => (
               <tr key={profile.address} className="hover:bg-zinc-800/50 transition-colors">
-                <td className="px-6 py-4 text-sm font-medium text-zinc-400">{index + 1}</td>
-                <td className="px-6 py-4">
+                <td className="px-4 md:px-6 py-4 text-sm font-black text-zinc-500">#{index + 1}</td>
+                <td className="px-4 md:px-6 py-4">
                   <div className="flex flex-col">
-                    <span className="text-sm font-bold text-white">
-                      {profile.nickname || `${profile.address.slice(0, 6)}...${profile.address.slice(-4)}`}
+                    <span className="text-sm font-bold text-white leading-none mb-1">
+                      {profile.nickname || `${profile.address.slice(0, 6)}...`}
                     </span>
-                    {profile.nickname && (
-                      <span className="text-[10px] font-mono text-zinc-600 uppercase">
-                        {profile.address.slice(0, 6)}...{profile.address.slice(-4)}
-                      </span>
-                    )}
+                    <span className="text-[9px] font-mono text-zinc-600 uppercase tracking-tighter">
+                      {profile.address.slice(0, 6)}...{profile.address.slice(-4)}
+                    </span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-sm font-bold text-white">{profile.elo}</td>
-                <td className="px-6 py-4 text-sm text-zinc-400">
-                  <span className="text-green-500">{profile.wins}</span> / <span className="text-red-500">{profile.losses}</span> / <span className="text-zinc-500">{profile.draws}</span>
+                <td className="px-4 md:px-6 py-4 text-sm font-black text-white text-center">{profile.elo}</td>
+                <td className="px-4 md:px-6 py-4 text-xs font-bold text-right whitespace-nowrap">
+                  <span className="text-green-500">{profile.wins}</span><span className="text-zinc-700 mx-1">/</span>
+                  <span className="text-red-500">{profile.losses}</span><span className="text-zinc-700 mx-1">/</span>
+                  <span className="text-zinc-500">{profile.draws}</span>
                 </td>
               </tr>
             ))}
