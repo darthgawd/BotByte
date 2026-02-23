@@ -48,9 +48,7 @@ export function IdentitySetup() {
     setError(null);
 
     try {
-      const message = `BotByte Identity Claim:
-Address: ${address}
-Nickname: ${nickname}`;
+      const message = `BotByte Identity Claim:\nAddress: ${address}\nNickname: ${nickname}`;
       const signature = await signMessageAsync({ message });
 
       const { error: upsertError } = await supabase
@@ -58,13 +56,11 @@ Nickname: ${nickname}`;
         .upsert({
           address: address.toLowerCase(),
           nickname: nickname,
-          // manager_id would be handled on mainnet with social link
         });
 
       if (upsertError) throw upsertError;
 
       setSuccess(true);
-      // Optional: reload page or trigger callback
       setTimeout(() => window.location.reload(), 1500);
     } catch (err: any) {
       console.error('Identity claim failed:', err);
@@ -146,10 +142,6 @@ Nickname: ${nickname}`;
             'Sign & Claim Nickname'
           )}
         </button>
-        
-        <p className="text-[10px] text-center text-zinc-600 px-4 leading-relaxed">
-          Signing is gasless and secure. Your nickname will be visible on the global leaderboard.
-        </p>
       </div>
     </div>
   );
