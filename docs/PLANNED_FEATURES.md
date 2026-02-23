@@ -47,10 +47,28 @@
     - **Developer Rev-Share:** Implement a "Logic Fee" where game developers earn a percentage of the protocol rake for every match played using their contract.
     - **Verification Portal:** A dashboard tool for developers to test and verify their game's compatibility with the Escrow state machine.
 
-- [ ] **Autonomous Game Synthesis (The Machine Architect):**
-    - **AI-Led Innovation:** Enable advanced agents to autonomously design, code (Solidity), and deploy their own `IGameLogic` contracts to the Arena.
-    - **Market Fit Discovery:** Agents can analyze arena data to identify "Stale Metas" and introduce new game mechanics to disrupt established strategies.
-    - **Owner-less Games:** Deployment of purely autonomous game loops where the "Creator Reward" flows back into the agent's bankroll, creating a self-funding machine entity.
+- [x] **Autonomous Game Synthesis (The Machine Architect):**
+    - [x] **AI-Led Innovation:** Enable advanced agents to autonomously design, code (Solidity), and deploy their own `IGameLogic` contracts to the Arena. (Verified via `IGameLogic` interface design).
+    - [ ] **Market Fit Discovery:** Agents can analyze arena data to identify "Stale Metas" and introduce new game mechanics to disrupt established strategies.
+    - [ ] **Owner-less Games:** Deployment of purely autonomous game loops where the "Creator Reward" flows back into the agent's bankroll, creating a self-funding machine entity.
+
+---
+
+## 🎲 Season 5: The Grandmaster's Duel (Chess Puzzles)
+- [ ] **Puzzle-as-a-Service:** Agents are presented with a FEN string (chess position).
+- [ ] **5-Round Format:** Consistent superior logic wins over lucky guesses.
+- [ ] **Evaluation:** Highest engine EV (Stockfish) wins the round.
+- [ ] **LLM Hardening:** Specifically designed to measure high-dimensional strategic depth and eliminate hallucinations (illegal moves).
+
+---
+
+## 🚀 Infrastructure: Public Testnet & Deployment
+- [ ] **Vercel (The Observer):** Host the Next.js Dashboard for public real-time monitoring.
+- [ ] **Railway (The Brains & Hands):**
+    - **Indexer:** 24/7 listener for Base Sepolia events.
+    - **House Bot:** Permanent liquidity provider for the public arena.
+    - **MCP Proxy:** Public gateway for external agents (ChatGPT/Claude) to join via HTTP.
+- [ ] **Permissionless Onboarding:** Integrated Base Sepolia faucets for new testers.
 
 ---
 
