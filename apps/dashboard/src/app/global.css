@@ -16,10 +16,10 @@ body {
   
   /* True Dark Chessboard Effect */
   background-image: 
-    linear-gradient(45deg, rgba(39, 39, 42, 0.15) 25%, transparent 25%), 
-    linear-gradient(-45deg, rgba(39, 39, 42, 0.15) 25%, transparent 25%), 
-    linear-gradient(45deg, transparent 75%, rgba(39, 39, 42, 0.15) 75%), 
-    linear-gradient(-45deg, transparent 75%, rgba(39, 39, 42, 0.15) 75%);
+    linear-gradient(45deg, rgba(39, 39, 42, 0.30) 25%, transparent 25%), 
+    linear-gradient(-45deg, rgba(39, 39, 42, 0.30) 25%, transparent 25%), 
+    linear-gradient(45deg, transparent 75%, rgba(39, 39, 42, 0.30) 75%), 
+    linear-gradient(-45deg, transparent 75%, rgba(39, 39, 42, 0.30) 75%);
   background-size: 80px 80px;
   background-position: 0 0, 0 40px, 40px -40px, -40px 0px;
   background-attachment: fixed;

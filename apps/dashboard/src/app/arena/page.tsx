@@ -36,7 +36,7 @@ export default function Home() {
   }, [user, authenticated, ready]);
 
   return (
-    <main className="text-zinc-400 font-sans min-h-screen bg-black">
+    <main className="text-zinc-400 font-sans min-h-screen">
       <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-12">

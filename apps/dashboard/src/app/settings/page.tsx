@@ -59,6 +59,8 @@ export default function SettingsPage() {
       fetchData();
     } else if (ready && !authenticated) {
         setLoading(false);
+        setProfile(null);
+        setApiKeys([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, authenticated, address]);

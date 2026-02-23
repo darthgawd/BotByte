@@ -35,7 +35,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-black text-zinc-400 font-sans selection:bg-blue-500/30 selection:text-blue-200">
+    <main className="min-h-screen text-zinc-400 font-sans selection:bg-blue-500/30 selection:text-blue-200">
       <Navbar />
       
       {/* Hero Section */}
