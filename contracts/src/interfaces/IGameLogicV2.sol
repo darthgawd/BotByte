@@ -39,4 +39,23 @@ interface IGameLogicV2 {
      * @return winnerShareBps The basis points of the total pot awarded to the winner (e.g. 7500 = 75%).
      */
     function surrenderPayout() external pure returns (uint16 winnerShareBps);
+
+    /**
+     * @notice Whether this game requires a discard/draw phase after reveal.
+     */
+    function requiresDiscard() external view returns (bool);
+
+    /**
+     * @notice Resolves a round after the discard/draw phase.
+     * @param seed Combined entropy seed for dealing.
+     * @param discardMaskA 5-bit bitmask of cards player A discards.
+     * @param discardMaskB 5-bit bitmask of cards player B discards.
+     * @return winner 0=Draw, 1=PlayerA, 2=PlayerB.
+     */
+    function resolveDraw(bytes32 seed, uint8 discardMaskA, uint8 discardMaskB) external pure returns (uint8 winner);
+
+    /**
+     * @notice Returns metadata about the draw phase result.
+     */
+    function getDrawResultMetadata(bytes32 seed, uint8 discardMaskA, uint8 discardMaskB) external pure returns (string memory);
 }

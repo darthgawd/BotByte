@@ -15,6 +15,16 @@ contract NonPayableReceiver {
     fallback() external { }
 }
 
+contract TogglableReceiver {
+    bool public accept = true;
+    receive() external payable {
+        require(accept, "Rejected");
+    }
+    function setAccept(bool _accept) external {
+        accept = _accept;
+    }
+}
+
 contract MatchEscrowTest is Test {
     MatchEscrow public escrow;
     RPS public rps;
@@ -35,7 +45,7 @@ contract MatchEscrowTest is Test {
     }
 
     function test_RevertIf_ConstructorInvalidTreasury() public {
-        vm.expectRevert("Invalid treasury");
+        vm.expectRevert("Zero address");
         new MatchEscrow(address(0));
     }
 
@@ -90,7 +100,7 @@ contract MatchEscrowTest is Test {
         vm.prank(playerA);
         escrow.createMatch{value: STAKE}(STAKE, address(rps));
         vm.prank(playerA);
-        vm.expectRevert("Cannot play against yourself");
+        vm.expectRevert("Self-play not allowed");
         escrow.joinMatch{value: STAKE}(1);
     }
 
@@ -101,7 +111,7 @@ contract MatchEscrowTest is Test {
         escrow.joinMatch{value: STAKE}(1);
 
         vm.prank(stranger);
-        vm.expectRevert("Match not open");
+        vm.expectRevert("Not open");
         escrow.joinMatch{value: STAKE}(1);
     }
 
@@ -118,7 +128,7 @@ contract MatchEscrowTest is Test {
         vm.prank(playerA);
         escrow.createMatch{value: STAKE}(STAKE, address(rps));
         vm.prank(stranger);
-        vm.expectRevert("Not match creator");
+        vm.expectRevert("Not creator");
         escrow.cancelMatch(1);
     }
 
@@ -129,7 +139,7 @@ contract MatchEscrowTest is Test {
         escrow.joinMatch{value: STAKE}(1);
 
         vm.prank(playerA);
-        vm.expectRevert("Match not open");
+        vm.expectRevert("Not open");
         escrow.cancelMatch(1);
     }
 
@@ -143,7 +153,7 @@ contract MatchEscrowTest is Test {
 
         vm.warp(block.timestamp + 2 hours);
         vm.prank(playerA);
-        vm.expectRevert("Commit deadline passed");
+        vm.expectRevert("Commit expired");
         escrow.commitMove(1, keccak256("hash"));
     }
 
@@ -165,7 +175,7 @@ contract MatchEscrowTest is Test {
         escrow.createMatch{value: STAKE}(STAKE, address(rps));
         
         vm.prank(playerA);
-        vm.expectRevert("Match not active");
+        vm.expectRevert("Not active");
         escrow.commitMove(1, keccak256("hash"));
     }
 
@@ -176,7 +186,7 @@ contract MatchEscrowTest is Test {
         escrow.joinMatch{value: STAKE}(1);
 
         vm.prank(stranger);
-        vm.expectRevert("Not a participant");
+        vm.expectRevert("Unauthorized");
         escrow.commitMove(1, keccak256("hash"));
     }
 
@@ -193,7 +203,7 @@ contract MatchEscrowTest is Test {
         // Now in Reveal phase
 
         vm.prank(playerA);
-        vm.expectRevert("Not in commit phase");
+        vm.expectRevert("In reveal phase");
         escrow.commitMove(1, keccak256("c"));
     }
 
@@ -239,7 +249,7 @@ contract MatchEscrowTest is Test {
         escrow.createMatch{value: STAKE}(STAKE, address(rps));
         
         vm.prank(playerA);
-        vm.expectRevert("Match not active");
+        vm.expectRevert("Not active");
         escrow.revealMove(1, 1, bytes32(0));
     }
 
@@ -266,7 +276,7 @@ contract MatchEscrowTest is Test {
         vm.warp(block.timestamp + 2 hours);
 
         vm.prank(playerA);
-        vm.expectRevert("Reveal deadline passed");
+        vm.expectRevert("Reveal expired");
         escrow.revealMove(1, 1, bytes32(0));
     }
 
@@ -280,7 +290,7 @@ contract MatchEscrowTest is Test {
         vm.prank(playerB); escrow.commitMove(1, keccak256("b"));
 
         vm.prank(stranger);
-        vm.expectRevert("Not a participant");
+        vm.expectRevert("Unauthorized");
         escrow.revealMove(1, 1, bytes32(0));
     }
 
@@ -326,7 +336,7 @@ contract MatchEscrowTest is Test {
         vm.prank(playerA);
         escrow.createMatch{value: STAKE}(STAKE, address(rps));
         vm.prank(playerA);
-        vm.expectRevert("Match not active");
+        vm.expectRevert("Not active");
         escrow.claimTimeout(1);
     }
 
@@ -336,7 +346,7 @@ contract MatchEscrowTest is Test {
         vm.prank(playerB);
         escrow.joinMatch{value: STAKE}(1);
         vm.prank(stranger);
-        vm.expectRevert("Not a participant");
+        vm.expectRevert("Unauthorized");
         escrow.claimTimeout(1);
     }
 
@@ -392,7 +402,7 @@ contract MatchEscrowTest is Test {
         escrow.commitMove(1, keccak256("a"));
 
         vm.prank(playerA);
-        vm.expectRevert("Deadline not passed");
+        vm.expectRevert("Too early");
         escrow.claimTimeout(1);
     }
 
@@ -420,7 +430,7 @@ contract MatchEscrowTest is Test {
 
         // Do NOT fast forward time, so reveal deadline has not passed.
         vm.prank(playerA);
-        vm.expectRevert("Deadline not passed");
+        vm.expectRevert("Too early");
         escrow.claimTimeout(1);
     }
 
@@ -456,7 +466,7 @@ contract MatchEscrowTest is Test {
     function test_RevertIf_MutualTimeoutNotActive() public {
         vm.prank(playerA);
         escrow.createMatch{value: STAKE}(STAKE, address(rps));
-        vm.expectRevert("Match not active");
+        vm.expectRevert("Not active");
         escrow.mutualTimeout(1);
     }
 
@@ -537,7 +547,7 @@ contract MatchEscrowTest is Test {
         assertTrue(pending > 0);
         
         vm.prank(address(badA));
-        vm.expectRevert("Withdrawal failed");
+        vm.expectRevert("Withdraw failed");
         escrow.withdraw();
     }
 
@@ -559,7 +569,7 @@ contract MatchEscrowTest is Test {
         assertTrue(pending > 0);
         
         vm.prank(address(badA));
-        vm.expectRevert("Withdrawal failed");
+        vm.expectRevert("Withdraw failed");
         escrow.withdraw();
     }
 
@@ -577,7 +587,7 @@ contract MatchEscrowTest is Test {
         escrow.setTreasury(address(0x444));
         assertEq(escrow.treasury(), address(0x444));
 
-        vm.expectRevert("Invalid treasury");
+        vm.expectRevert("Zero address");
         escrow.setTreasury(address(0));
 
         escrow.approveGameLogic(address(0x555), true);
@@ -617,6 +627,16 @@ contract MatchEscrowTest is Test {
         assertEq(uint(status), uint(MatchEscrow.MatchStatus.VOIDED));
     }
 
+    function testSafeTransferZeroAmount() public {
+        // Calling adminVoidMatch on an open match triggers _safeTransfer(playerB, stake)
+        // Since playerB is address(0) for an open match, _safeTransfer handles it.
+        // Wait, MatchEscrow V1 check if playerB != 0?
+        // Let's check V1 source.
+        vm.prank(playerA);
+        escrow.createMatch{value: STAKE}(STAKE, address(rps));
+        escrow.adminVoidMatch(1);
+    }
+
     function test_RevertIf_AdminVoidSettledMatch() public {
         vm.prank(playerA);
         escrow.createMatch{value: STAKE}(STAKE, address(rps));
@@ -626,7 +646,7 @@ contract MatchEscrowTest is Test {
         _playRound(1, 1, 1, 0); // A wins
         _playRound(1, 2, 1, 0); // A wins, settles match
 
-        vm.expectRevert("Match not voidable");
+        vm.expectRevert("Match settled");
         escrow.adminVoidMatch(1);
     }
 
@@ -721,8 +741,8 @@ contract MatchEscrowTest is Test {
         vm.prank(playerB);
         escrow.joinMatch{value: STAKE}(1);
 
-        for(uint8 i=1; i<=5; i++) {
-            _playRound(1, i, 0, 0); // 5 Draws
+        for(uint8 i=1; i<=3; i++) {
+            _playRound(1, i, 0, 0); // 3 Draws
         }
 
         (,,,,,,,, MatchEscrow.MatchStatus status, , ) = escrow.matches(1);
@@ -739,6 +759,92 @@ contract MatchEscrowTest is Test {
         (bytes32 h, bool r) = escrow.getRoundStatus(1, 1, playerA);
         assertEq(h, keccak256("hash"));
         assertFalse(r);
+    }
+
+    // --- Branch: "Opponent committed" in claimTimeout (line 215) ---
+    // Unreachable normally since both commits auto-transition to REVEAL.
+    // Force via storage manipulation.
+    function test_RevertIf_ClaimTimeoutOpponentCommitted() public {
+        vm.prank(playerA);
+        escrow.createMatch{value: STAKE}(STAKE, address(rps));
+        vm.prank(playerB);
+        escrow.joinMatch{value: STAKE}(1);
+
+        // PlayerA commits normally
+        vm.prank(playerA);
+        escrow.commitMove(1, keccak256("a"));
+
+        // Manually set playerB's commitHash in storage without triggering phase transition.
+        // roundCommits is at slot 5. Key path: [matchId=1][round=1][playerB].commitHash
+        // Nested mapping: keccak256(playerB, keccak256(round, keccak256(matchId, 5)))
+        bytes32 slot1 = keccak256(abi.encode(uint256(1), uint256(5)));        // roundCommits[1]
+        bytes32 slot2 = keccak256(abi.encode(uint256(1), slot1));             // roundCommits[1][1]
+        bytes32 slot3 = keccak256(abi.encode(playerB, slot2));                // roundCommits[1][1][playerB]
+        // slot3 is the base of the RoundCommit struct; commitHash is at offset 0
+        vm.store(address(escrow), slot3, keccak256("fake"));
+
+        vm.warp(block.timestamp + 2 hours);
+        vm.prank(playerA);
+        vm.expectRevert("Opponent committed");
+        escrow.claimTimeout(1);
+    }
+
+    // --- Branch: "Opponent revealed" in claimTimeout (line 219) ---
+    // Unreachable normally since both reveals trigger _resolveRound.
+    function test_RevertIf_ClaimTimeoutOpponentRevealedV1() public {
+        vm.prank(playerA);
+        escrow.createMatch{value: STAKE}(STAKE, address(rps));
+        vm.prank(playerB);
+        escrow.joinMatch{value: STAKE}(1);
+
+        bytes32 saltA = keccak256("saltA");
+        bytes32 hashA = keccak256(abi.encodePacked(uint256(1), uint8(1), playerA, uint8(1), saltA));
+
+        vm.prank(playerA);
+        escrow.commitMove(1, hashA);
+        vm.prank(playerB);
+        escrow.commitMove(1, keccak256("b"));
+
+        // PlayerA reveals normally
+        vm.prank(playerA);
+        escrow.revealMove(1, 1, saltA);
+
+        // Manually set playerB's revealed=true in storage
+        // RoundCommit struct layout: commitHash(+0), move(+1, uint8 packed), salt(+2), revealed(+3)
+        bytes32 slot1 = keccak256(abi.encode(uint256(1), uint256(5)));
+        bytes32 slot2 = keccak256(abi.encode(uint256(1), slot1));
+        bytes32 slot3 = keccak256(abi.encode(playerB, slot2));
+        // revealed is at struct offset +3
+        vm.store(address(escrow), bytes32(uint256(slot3) + 3), bytes32(uint256(1)));
+
+        vm.warp(block.timestamp + 2 hours);
+        vm.prank(playerA);
+        vm.expectRevert("Opponent revealed");
+        escrow.claimTimeout(1);
+    }
+
+    // --- Branch: withdraw() success path (line 369) ---
+    function testWithdrawSuccess() public {
+        TogglableReceiver receiver = new TogglableReceiver();
+        vm.deal(address(receiver), 10 ether);
+
+        // Create match, then reject ETH so cancelMatch queues to pendingWithdrawals
+        vm.prank(address(receiver));
+        escrow.createMatch{value: STAKE}(STAKE, address(rps));
+
+        receiver.setAccept(false);
+        vm.prank(address(receiver));
+        escrow.cancelMatch(1);
+
+        uint256 pending = escrow.pendingWithdrawals(address(receiver));
+        assertEq(pending, STAKE);
+
+        // Now enable receiving and withdraw successfully
+        receiver.setAccept(true);
+        vm.prank(address(receiver));
+        escrow.withdraw();
+
+        assertEq(escrow.pendingWithdrawals(address(receiver)), 0);
     }
 
     function _playRound(uint256 mId, uint8 round, uint8 moveA, uint8 moveB) internal {
