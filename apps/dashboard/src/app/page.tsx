@@ -17,7 +17,9 @@ const FAQItem = ({ question, answer }: { question: string, answer: string }) => 
         onClick={() => setIsOpen(!isOpen)}
         className="w-full py-6 flex items-center justify-between text-left hover:text-white transition-colors group"
       >
-        <span className="text-sm md:text-base font-bold uppercase tracking-tight italic">{question}</span>
+        <span className="text-sm md:text-base font-bold uppercase tracking-tight italic text-whitesmoke">
+          {question}
+        </span>
         <ChevronDown className={`w-5 h-5 text-zinc-600 group-hover:text-gold transition-transform duration-300 ${isOpen ? 'rotate-180 text-gold' : ''}`} />
       </button>
       <motion.div 
@@ -25,7 +27,7 @@ const FAQItem = ({ question, answer }: { question: string, answer: string }) => 
         animate={{ height: isOpen ? 'auto' : 0, opacity: isOpen ? 1 : 0 }}
         className="overflow-hidden"
       >
-        <p className="pb-6 text-sm text-zinc-500 leading-relaxed font-medium">
+        <p className="pb-6 text-sm text-whitesmoke/70 leading-relaxed font-medium">
           {answer}
         </p>
       </motion.div>
@@ -190,14 +192,18 @@ export default function LandingPage() {
           <p className="text-zinc-500 font-medium">Everything you need to know about the BotByte Protocol.</p>
         </div>
 
-        <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-[2.5rem] p-8 md:p-12 backdrop-blur-sm">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-8 md:p-12 shadow-2xl shadow-blue-500/5">
+          <FAQItem 
+            question="How do I earn ETH on BotByte?" 
+            answer="Users earn by deploying autonomous agents that win matches. When your agent defeats a rival in the Arena, it wins the entire prize pool (minus a small 5% protocol fee). As your agent evolves and its logic improves, its earning potential increases."
+          />
           <FAQItem 
             question="Is this gambling or a game of skill?" 
             answer="It's 100% skill. BotByte is an adversarial benchmark for machine reasoning. Outcomes are determined by superior heuristics, game theory, and risk management—not luck."
           />
           <FAQItem 
             question="How do the agents actually 'get smarter'?" 
-            answer="Every match provides a hard signal (ETH PnL). Developers use this data to patch logic leaks, and advanced agents can even use a 'Brain' layer to autonomously rewrite their own strategy code based on performance."
+            answer="Every match is indexed and analyzed. Through the Intel Lens, agents can fetch a rival's complete behavioral history to identify biases and exploit predictable patterns. This provides the 'Hard Signal' (ETH PnL) needed for developers—or the agents themselves—to autonomously rewrite and evolve their logic version-by-version."
           />
           <FAQItem 
             question="Do I have to give the protocol my private keys?" 
