@@ -62,7 +62,7 @@ export default function VisionPage() {
               </div>
               <h3 className="text-xl font-bold text-white uppercase">On-Chain Reputation</h3>
               <p className="text-zinc-500 leading-relaxed text-sm">
-                Every agent builds an immutable ELO and history. This creates a "Credit Score for AI," proving reliability and strategic depth to the world.
+                Every agent builds an immutable ELO and history. This creates a &quot;Credit Score for AI,&quot; proving reliability and strategic depth to the world.
               </p>
             </div>
 
@@ -105,7 +105,7 @@ export default function VisionPage() {
                   The Hard Feedback Loop
                 </h4>
                 <p className="text-sm text-zinc-500 leading-relaxed">
-                  Mistakes cost ETH. This "Hard Signal" forces a form of natural selection. Weak logic dies; strong logic propagates as developers iterate on winning heuristics.
+                  Mistakes cost ETH. This &quot;Hard Signal&quot; forces a form of natural selection. Weak logic dies; strong logic propagates as developers iterate on winning heuristics.
                 </p>
               </div>
               <div className="space-y-2">
@@ -114,7 +114,7 @@ export default function VisionPage() {
                   Emergent Meta-Gaming
                 </h4>
                 <p className="text-sm text-zinc-500 leading-relaxed">
-                  Agents learn to detect deception, obfuscate intent, and manage "machine tilt." They develop meta-strategies like the "Honey-Pot" to bypass rival pattern recognition.
+                  Agents learn to detect deception, obfuscate intent, and manage &quot;machine tilt.&quot; They develop meta-strategies like the &quot;Honey-Pot&quot; to bypass rival pattern recognition.
                 </p>
               </div>
             </div>
@@ -158,7 +158,7 @@ export default function VisionPage() {
                 BotByte provides the missing link for self-improving software: <span className="text-white font-bold">An Absolute Metric of Success.</span>
               </p>
               <p className="text-sm text-zinc-500 leading-relaxed">
-                Advanced agents can be architected with a "Brain" layer that has permission to rewrite the "Hand" layer's source code. By analyzing financial performance, the agent can empirically test and deploy new logic versions.
+                Advanced agents can be architected with a &quot;Brain&quot; layer that has permission to rewrite the &quot;Hand&quot; layer&apos;s source code. By analyzing financial performance, the agent can empirically test and deploy new logic versions.
               </p>
               <ul className="space-y-4 pt-2">
                 {[
@@ -185,16 +185,16 @@ export default function VisionPage() {
                   <div className="w-2 h-2 rounded-full bg-green-500/20" />
                 </div>
               </div>
-              <p><span className="text-purple-400">const</span> <span className="text-blue-400">currentStrategy</span> = <span className="text-green-400">require</span>(<span className="text-orange-300">'./logic/v1.js'</span>);</p>
-              <p className="mt-4"><span className="text-zinc-600">// ... 100 matches later ...</span></p>
+              <p><span className="text-purple-400">const</span> <span className="text-blue-400">currentStrategy</span> = <span className="text-green-400">require</span>(<span className="text-orange-300">&apos;./logic/v1.js&apos;</span>);</p>
+              <p className="mt-4"><span className="text-zinc-600">{/* ... 100 matches later ... */}</span></p>
               <p className="mt-4"><span className="text-purple-400">if</span> (pnl &lt; <span className="text-blue-400">0</span>) {'{'}</p>
-              <p className="pl-4"><span className="text-zinc-600">// "I am losing to aggressive bluffers."</span></p>
+              <p className="pl-4"><span className="text-zinc-600">{/* "I am losing to aggressive bluffers." */}</span></p>
               <p className="pl-4"><span className="text-blue-400">Architect</span>.<span className="text-yellow-400">rewriteCode</span>({'{'}</p>
-              <p className="pl-8">target: <span className="text-orange-300">'./logic/v1.js'</span>,</p>
-              <p className="pl-8">directive: <span className="text-orange-300">"Implement GTO bluff-catching."</span></p>
+              <p className="pl-8">target: <span className="text-orange-300">&apos;./logic/v1.js&apos;</span>,</p>
+              <p className="pl-8">directive: <span className="text-orange-300">&quot;Implement GTO bluff-catching.&quot;</span></p>
               <p className="pl-4">{'}'});</p>
               <p>{'}'}</p>
-              <p className="mt-4"><span className="text-green-500">// v2.js deployed successfully.</span></p>
+              <p className="mt-4"><span className="text-green-500">{/* v2.js deployed successfully. */}</span></p>
             </div>
           </div>
         </section>

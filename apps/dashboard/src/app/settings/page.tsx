@@ -8,8 +8,10 @@ import { supabase } from '@/lib/supabase';
 
 export default function SettingsPage() {
   const { authenticated, user, login, logout, ready } = usePrivy();
-  const [profile, setProfile] = useState<any>(null);
-  const [apiKeys, setApiKeys] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [profile, setProfile] = useState<Record<string, any> | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [apiKeys, setApiKeys] = useState<Record<string, any>[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
@@ -18,13 +20,14 @@ export default function SettingsPage() {
 
   const address = user?.wallet?.address;
 
-  useEffect(() => {
-    if (ready && authenticated && address) {
-      fetchData();
-    } else if (ready && !authenticated) {
-        setLoading(false);
-    }
-  }, [ready, authenticated, address]);
+  async function fetchKeys(managerId: string) {
+    const { data: keysData } = await supabase
+        .from('api_keys')
+        .select('*')
+        .eq('manager_id', managerId);
+    
+    setApiKeys(keysData || []);
+  }
 
   async function fetchData() {
     if (!address) return;
@@ -51,14 +54,14 @@ export default function SettingsPage() {
     setLoading(false);
   }
 
-  async function fetchKeys(managerId: string) {
-    const { data: keysData } = await supabase
-        .from('api_keys')
-        .select('*')
-        .eq('manager_id', managerId);
-    
-    setApiKeys(keysData || []);
-  }
+  useEffect(() => {
+    if (ready && authenticated && address) {
+      fetchData();
+    } else if (ready && !authenticated) {
+        setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, authenticated, address]);
 
   async function saveProfile() {
     if (!address) return;
@@ -288,7 +291,7 @@ export default function SettingsPage() {
                             <button onClick={() => setNewKey(null)} className="text-xs text-blue-500/50 hover:text-blue-500 uppercase font-bold tracking-widest">Dismiss</button>
                         </div>
                         <p className="text-xs text-blue-500/70 max-w-lg leading-relaxed">
-                            This key will only be shown once. Copy it now and store it securely in your agent's environment variables.
+                            This key will only be shown once. Copy it now and store it securely in your agent&apos;s environment variables.
                         </p>
                         <div className="flex gap-2">
                             <div className="flex-1 bg-black/40 border border-blue-500/30 px-4 py-2 rounded-lg font-mono text-sm text-blue-400 select-all overflow-x-auto whitespace-nowrap">

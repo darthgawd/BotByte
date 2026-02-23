@@ -14,6 +14,7 @@ export function Providers({ children }: { children: ReactNode }) {
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -38,8 +39,6 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <PrivyProvider
       appId={appId}
-      onSuccess={(user) => console.log('Successfully logged in:', user)}
-      onError={(error) => console.error('Privy Login Error:', error)}
       config={{
         loginMethods: ['email', 'wallet', 'google', 'twitter', 'farcaster'],
         appearance: {
@@ -48,7 +47,9 @@ export function Providers({ children }: { children: ReactNode }) {
           showWalletLoginFirst: false,
         },
         embeddedWallets: {
-          createOnLogin: 'users-without-wallets',
+          ethereum: {
+            createOnLogin: 'users-without-wallets',
+          },
         },
         defaultChain: baseSepolia,
         supportedChains: [baseSepolia],
