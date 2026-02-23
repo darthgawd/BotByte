@@ -76,9 +76,10 @@ export function Navbar() {
                 {/* 1. Coinbase/CDP Flow */}
                 <Wallet>
                   <ConnectWallet 
-                    text="Base Sign-In"
                     className="bg-zinc-100 hover:bg-zinc-200 text-black text-[10px] font-black px-4 py-2.5 rounded-xl transition-all uppercase italic tracking-tight"
-                  />
+                  >
+                    Base Sign-In
+                  </ConnectWallet>
                 </Wallet>
 
                 {/* 2. Privy/Social Flow */}
