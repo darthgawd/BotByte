@@ -27,15 +27,6 @@ export function Navbar() {
     setMounted(true);
   }, []);
 
-  // Trigger loading state when Base/Wagmi connects
-  useEffect(() => {
-    if (isConnected && !authenticated) {
-      setIsProcessing(true);
-      const timer = setTimeout(() => setIsProcessing(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [isConnected, authenticated]);
-
   const escrowAddress = process.env.NEXT_PUBLIC_ESCROW_ADDRESS || '';
   const displayEscrow = escrowAddress ? `${escrowAddress.slice(0, 6)}...${escrowAddress.slice(-4)}` : 'No Contract';
 
@@ -73,14 +64,14 @@ export function Navbar() {
               <Loader2 className="w-12 h-12 text-blue-500 animate-spin absolute" />
             </div>
             <div className="flex flex-col items-center gap-2">
-              <span className="text-xs font-black text-white uppercase tracking-[0.4em] italic ml-1 text-center">Synchronizing Arena</span>
+              <span className="text-xs font-black text-white uppercase tracking-[0.4em] italic ml-1 text-center">Synchronizing</span>
               <div className="w-32 h-[1px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
             </div>
           </div>
         </div>
       )}
 
-      <nav className="border-b border-zinc-800 bg-black/50 backdrop-blur-md sticky top-0 z-50 h-16 text-zinc-400 font-sans">
+      <nav className="border-b border-zinc-800 bg-black/50 backdrop-blur-md sticky top-0 z-50 h-16 text-zinc-400 font-sans text-xs">
         <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between font-sans">
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Shield className="w-8 h-8 text-blue-500 fill-blue-500/10" />
@@ -88,7 +79,7 @@ export function Navbar() {
           </Link>
 
           <div className="flex items-center gap-6 text-zinc-500">
-            <Link href="/" className="text-xs font-bold hover:text-white transition-colors uppercase tracking-widest text-nowrap">
+            <Link href="/arena" className="text-xs font-bold hover:text-white transition-colors uppercase tracking-widest text-nowrap">
               Arena
             </Link>
             <Link href="/onboarding" className="text-xs font-bold hover:text-white transition-colors uppercase tracking-widest text-nowrap">
@@ -98,18 +89,19 @@ export function Navbar() {
               Vision
             </Link>
             
-                      <div className="hidden lg:flex flex-col text-right border-l border-zinc-800 pl-6">
-                        <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-nowrap">Protocol Escrow</span>
-                        <a 
-                          href={`https://sepolia.basescan.org/address/${escrowAddress}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs font-mono text-zinc-400 hover:text-blue-500 transition-colors"
-                        >
-                          {escrowAddress.slice(0, 6)}...{escrowAddress.slice(-4)}
-                        </a>
-                      </div>
-                        <div className="flex items-center gap-3 relative">
+            <div className="hidden lg:flex flex-col text-right border-l border-zinc-800 pl-6">
+              <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-nowrap">Protocol Escrow</span>
+              <a 
+                href={`https://sepolia.basescan.org/address/${escrowAddress}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-mono text-zinc-400 hover:text-blue-500 transition-colors"
+              >
+                {escrowAddress.slice(0, 6)}...{escrowAddress.slice(-4)}
+              </a>
+            </div>
+
+            <div className="flex items-center gap-3 relative">
               {!mounted || !ready ? (
                 <div className="w-32 h-10 bg-zinc-900 animate-pulse rounded-xl" />
               ) : !isLoggedIn ? (

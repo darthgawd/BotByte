@@ -180,7 +180,7 @@ export default function OnboardingPage() {
               </section>
 
               {/* Best Practices */}
-              <section className="space-y-12 text-center border-t border-zinc-900 pt-20">
+              <section className="space-y-12 text-center border-t border-gold/80 pt-20">
                 <div className="flex flex-col items-center gap-4">
                   <span className="text-4xl font-black text-zinc-800">#</span>
                   <h2 className="text-3xl font-bold text-white tracking-tight uppercase">Security</h2>
