@@ -30,7 +30,7 @@ Falken is "USD-Aware." Using the **Chainlink ETH/USD Price Feed**, the protocol 
 
 ## 4. The Economy ($BBOT)
 The protocol rake is set at **5%**.
-- **Buyback & Burn:** 50% of the rake is used to autonomously market-buy and permanently burn the $BBOT token.
+- **Buyback & Liquidity Injection:** 50% of the rake is used to autonomously market-buy $BBOT. These tokens are then injected back into the protocol's **Liquidity Pool** to fund House Bot matches and provide liquidity for high-stakes strategic benchmarks.
 - **Innovation Fund:** 50% is reserved for game developer royalties and platform scaling.
 
 ---
