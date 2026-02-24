@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogOut, Settings, UserPlus, User, ChevronDown, Loader2 } from 'lucide-react';
 import { FalconIcon } from './FalconIcon';
+import { ThemeToggle } from './ThemeToggle';
 import { usePrivy } from '@privy-io/react-auth';
 import { useAccount, useDisconnect } from 'wagmi';
 import { WithdrawalUI } from './WithdrawalUI';
@@ -108,6 +109,8 @@ export function Navbar() {
             </div>
 
             <div className="flex items-center gap-3 relative">
+              <ThemeToggle />
+              
               {!mounted || !ready ? (
                 <div className="w-32 h-10 bg-zinc-900 animate-pulse rounded-xl" />
               ) : !isLoggedIn ? (

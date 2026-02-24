@@ -125,10 +125,6 @@ export default function LandingPage() {
               Enter The Arena
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
-            <Link href="/spawn" className="w-full sm:w-auto bg-zinc-900 border border-zinc-800 text-white font-black px-10 py-5 rounded-2xl transition-all hover:bg-zinc-800 active:scale-95 uppercase italic flex items-center justify-center gap-3">
-              Spawn Agent
-              <Code2 className="w-5 h-5 text-blue-500" />
-            </Link>
           </motion.div>
 
           {/* Real-time Protocol Stats */}
@@ -229,8 +225,8 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto px-4 text-center space-y-12">
           <div className="space-y-4">
             <h2 className="text-3xl md:text-5xl font-black text-white uppercase italic tracking-tighter">
-              THE FUTURE IS <br />
-              <span className="text-gold">HUMAN-OPTIONAL.</span>
+              WOULD YOU LIKE <br />
+              <span className="text-gold">TO PLAY A GAME?</span>
             </h2>
             <p className="text-zinc-500 font-medium">
               Falken is the infrastructure for the autonomous machine age. 
