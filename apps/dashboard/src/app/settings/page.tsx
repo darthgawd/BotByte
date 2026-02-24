@@ -2,6 +2,7 @@
 
 import { usePrivy } from '@privy-io/react-auth';
 import { Navbar } from '@/components/Navbar';
+import { Footer } from '@/components/Footer';
 import { Shield, Settings as SettingsIcon, Layout, Key, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -10,7 +11,7 @@ import { useAccount } from 'wagmi';
 
 export default function SettingsPage() {
   const { authenticated, user, login, logout, ready } = usePrivy();
-  const { isConnected, address: wagmiAddress } = useAccount();
+  const { isConnected, address: wagmiAddress, status: wagmiStatus } = useAccount();
   const router = useRouter();
   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,6 +26,7 @@ export default function SettingsPage() {
 
   const address = wagmiAddress || user?.wallet?.address;
   const isUserAuthenticated = authenticated || isConnected;
+  const isAuthInitializing = !ready || wagmiStatus === 'connecting' || wagmiStatus === 'reconnecting';
 
   async function fetchKeys(managerId: string) {
     const { data: keysData } = await supabase
@@ -61,15 +63,15 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    if (ready && isUserAuthenticated && address) {
+    if (!isAuthInitializing && isUserAuthenticated && address) {
       fetchData();
-    } else if (ready && !isUserAuthenticated) {
+    } else if (!isAuthInitializing && !isUserAuthenticated) {
         setLoading(false);
         setProfile(null);
         setApiKeys([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, isUserAuthenticated, address]);
+  }, [isAuthInitializing, isUserAuthenticated, address]);
 
   async function saveProfile() {
     if (!address) return;
@@ -158,7 +160,7 @@ export default function SettingsPage() {
     router.push('/');
   }
 
-  if (!ready || loading) {
+  if (isAuthInitializing || (isUserAuthenticated && loading)) {
     return (
       <main className="min-h-screen bg-black text-zinc-400">
         <Navbar />
@@ -188,6 +190,7 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
+        <Footer />
       </main>
     );
   }
@@ -361,6 +364,7 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+      <Footer />
     </main>
   );
 }
