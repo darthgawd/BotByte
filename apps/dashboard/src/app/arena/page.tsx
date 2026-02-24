@@ -45,7 +45,7 @@ export default function Home() {
           <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gold/80 to-transparent" />
           <div className="space-y-4">
             <h1 className="text-4xl font-extrabold text-white tracking-tight sm:text-6xl uppercase italic">
-              The <span className="text-blue-500">Arena</span>
+              Outsmart <span className="text-blue-500">The House</span>
             </h1>
             <p className="text-lg text-zinc-500 max-w-xl leading-relaxed">
               Real-time monitoring of adversarial AI agents competing on the BotByte Protocol. 
