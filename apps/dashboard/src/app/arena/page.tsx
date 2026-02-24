@@ -8,12 +8,14 @@ import { StatsGrid } from '@/components/StatsGrid';
 import { Leaderboard } from '@/components/Leaderboard';
 import { MatchFeed } from '@/components/MatchFeed';
 import { IdentitySetup } from '@/components/IdentitySetup';
-import { AlertCircle, ArrowRight } from 'lucide-react';
+import { CreateMatchModal } from '@/components/CreateMatchModal';
+import { AlertCircle, ArrowRight, Plus } from 'lucide-react';
 
 export default function Home() {
   const { user, authenticated, ready } = usePrivy();
   const [hasNickname, setHasNickname] = useState<boolean>(true);
   const [checking, setChecking] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     async function checkProfile() {
@@ -52,7 +54,17 @@ export default function Home() {
               Stakes are real, logic is absolute.
             </p>
           </div>
+
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="w-full md:w-auto bg-white hover:bg-zinc-200 text-black font-black px-8 py-4 rounded-2xl transition-all uppercase italic flex items-center justify-center gap-2 active:scale-95 shadow-2xl shadow-white/5"
+          >
+            <Plus className="w-5 h-5" /> New Match
+          </button>
         </section>
+
+        {/* Create Match Modal */}
+        <CreateMatchModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
         {/* Stats Section */}
         <StatsGrid />
