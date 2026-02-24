@@ -8,12 +8,18 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { useAccount } from 'wagmi';
+import { useName } from '@coinbase/onchainkit/identity';
+import { baseSepolia } from 'viem/chains';
 
 export default function SettingsPage() {
   const { authenticated, user, login, logout, ready } = usePrivy();
   const { isConnected, address: wagmiAddress, status: wagmiStatus } = useAccount();
   const router = useRouter();
   
+  const [mounted, setMounted] = useState(false);
+  const address = wagmiAddress || user?.wallet?.address;
+  const { data: basename } = useName({ address: address as `0x${string}`, chain: baseSepolia });
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [profile, setProfile] = useState<Record<string, any> | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -24,9 +30,13 @@ export default function SettingsPage() {
   const [nickname, setNickname] = useState('');
   const [bio, setBio] = useState('');
 
-  const address = wagmiAddress || user?.wallet?.address;
   const isUserAuthenticated = authenticated || isConnected;
-  const isAuthInitializing = !ready || wagmiStatus === 'connecting' || wagmiStatus === 'reconnecting';
+  // robust check: wait for both Privy and Wagmi to finish their internal checks
+  const isAuthInitializing = !mounted || !ready || wagmiStatus === 'connecting' || wagmiStatus === 'reconnecting';
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   async function fetchKeys(managerId: string) {
     const { data: keysData } = await supabase
@@ -46,7 +56,7 @@ export default function SettingsPage() {
       .from('manager_profiles')
       .select('*')
       .eq('address', address.toLowerCase())
-      .single();
+      .maybeSingle();
 
     if (profileData) {
       setProfile(profileData);
@@ -72,6 +82,13 @@ export default function SettingsPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthInitializing, isUserAuthenticated, address]);
+
+  // Separate effect for Basename propagation to avoid race conditions
+  useEffect(() => {
+    if (basename && !nickname && !profile?.nickname) {
+      setNickname(basename);
+    }
+  }, [basename, nickname, profile]);
 
   async function saveProfile() {
     if (!address) return;
