@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Shield, LogOut, Settings, UserPlus, User, ChevronDown, Loader2 } from 'lucide-react';
+import { LogOut, Settings, UserPlus, User, ChevronDown, Loader2 } from 'lucide-react';
+import { FalconIcon } from './FalconIcon';
 import { usePrivy } from '@privy-io/react-auth';
 import { useAccount, useDisconnect } from 'wagmi';
 import { WithdrawalUI } from './WithdrawalUI';
@@ -65,7 +66,7 @@ export function Navbar() {
         <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-500">
           <div className="flex flex-col items-center gap-6">
             <div className="relative flex items-center justify-center">
-              <Shield className="w-20 h-20 text-blue-500/10 animate-pulse" />
+              <FalconIcon className="w-20 h-20 text-blue-500/10 animate-pulse" color="currentColor" />
               <Loader2 className="w-12 h-12 text-blue-500 animate-spin absolute" />
             </div>
             <div className="flex flex-col items-center gap-2">
@@ -79,7 +80,7 @@ export function Navbar() {
       <nav className="border-b border-zinc-800 bg-black/50 backdrop-blur-md sticky top-0 z-50 h-16 text-zinc-400 font-sans text-xs">
         <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between font-sans">
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <Shield className="w-8 h-8 text-blue-500 fill-blue-500/10" />
+            <FalconIcon className="w-8 h-8 text-blue-500 fill-blue-500/10" color="currentColor" />
             <div className="flex items-baseline gap-1.5">
               <span className="font-bold text-xl tracking-tight text-white uppercase tracking-tighter leading-none">FALKEN</span>
               <span className="font-black text-xs text-blue-500 uppercase tracking-[0.2em] italic leading-none">Protocol</span>

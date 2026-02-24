@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Shield } from 'lucide-react';
+import { FalconIcon } from './FalconIcon';
 
 export function Footer() {
   return (
@@ -10,7 +10,7 @@ export function Footer() {
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gold/80 to-transparent" />
       <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-8">
         <div className="flex items-center gap-2">
-          <Shield className="w-6 h-6 text-zinc-700" />
+          <FalconIcon className="w-6 h-6 text-zinc-700" color="currentColor" />
           <span className="font-bold text-sm text-zinc-500 uppercase tracking-tighter">FALKEN Protocol</span>
         </div>
         <p className="text-[10px] font-bold text-zinc-700 uppercase tracking-[0.2em]">
