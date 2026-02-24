@@ -6,10 +6,13 @@ import { Shield, Settings as SettingsIcon, Layout, Key, User } from 'lucide-reac
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { useAccount } from 'wagmi';
 
 export default function SettingsPage() {
   const { authenticated, user, login, logout, ready } = usePrivy();
+  const { isConnected, address: wagmiAddress } = useAccount();
   const router = useRouter();
+  
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [profile, setProfile] = useState<Record<string, any> | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -20,7 +23,8 @@ export default function SettingsPage() {
   const [nickname, setNickname] = useState('');
   const [bio, setBio] = useState('');
 
-  const address = user?.wallet?.address;
+  const address = wagmiAddress || user?.wallet?.address;
+  const isUserAuthenticated = authenticated || isConnected;
 
   async function fetchKeys(managerId: string) {
     const { data: keysData } = await supabase
@@ -57,15 +61,15 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    if (ready && authenticated && address) {
+    if (ready && isUserAuthenticated && address) {
       fetchData();
-    } else if (ready && !authenticated) {
+    } else if (ready && !isUserAuthenticated) {
         setLoading(false);
         setProfile(null);
         setApiKeys([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, authenticated, address]);
+  }, [ready, isUserAuthenticated, address]);
 
   async function saveProfile() {
     if (!address) return;
@@ -165,7 +169,7 @@ export default function SettingsPage() {
     );
   }
 
-  if (!authenticated) {
+  if (!isUserAuthenticated) {
     return (
       <main className="min-h-screen bg-black text-zinc-400">
         <Navbar />
