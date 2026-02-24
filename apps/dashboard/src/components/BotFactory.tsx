@@ -14,11 +14,15 @@ import {
   ChevronLeft,
   Wand2,
   Lock,
-  Swords
+  Swords,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAccount } from 'wagmi';
+import { usePrivy } from '@privy-io/react-auth';
+import Link from 'next/link';
 
-type Step = 'IDENTITY' | 'ARCHETYPE' | 'BRAIN' | 'FINALIZE';
+type Step = 'IDENTITY' | 'ARCHETYPE' | 'BRAIN' | 'FINALIZE' | 'SUCCESS';
 
 const ARCHETYPES = [
   { id: 'AGGRESSIVE', name: 'The Aggressor', desc: 'Prioritizes high stakes and relentless pressure. Uses intuition over safety.', icon: Swords, color: 'text-red-500', bg: 'bg-red-500/10' },
@@ -32,10 +36,52 @@ const BRAINS = [
 ];
 
 export function BotFactory() {
+  const { user } = usePrivy();
+  const { address: wagmiAddress } = useAccount();
   const [step, setStep] = useState<Step>('IDENTITY');
   const [name, setName] = useState('');
   const [archetype, setArchetype] = useState(ARCHETYPES[1].id);
   const [brain, setBrain] = useState(BRAINS[0].id);
+  const [loading, setLoading] = useState(false);
+  const [spawnedAddress, setAgentAddress] = useState('');
+
+  const managerAddress = wagmiAddress || user?.wallet?.address;
+
+  const handleInitialize = async () => {
+    console.log('Initializing Bot...', { name, managerAddress, archetype, brain });
+    if (!name || !managerAddress) {
+      console.warn('Missing requirements:', { name, managerAddress });
+      alert('Please ensure you are logged in and have chosen a name.');
+      return;
+    }
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/spawn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nickname: name,
+          archetype,
+          llmTier: brain,
+          managerAddress: managerAddress
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setAgentAddress(data.agentAddress);
+        setStep('SUCCESS');
+      } else {
+        alert(data.error || 'Spawning failed');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error during spawning');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderIdentity = () => (
     <motion.div 
@@ -223,13 +269,56 @@ export function BotFactory() {
       </div>
 
       <div className="flex gap-4">
-        <button onClick={() => setStep('BRAIN')} className="flex-1 bg-zinc-900 text-white font-bold py-5 rounded-2xl hover:bg-zinc-800 transition-colors uppercase italic flex items-center justify-center gap-2">
+        <button disabled={loading} onClick={() => setStep('BRAIN')} className="flex-1 bg-zinc-900 text-white font-bold py-5 rounded-2xl hover:bg-zinc-800 transition-colors uppercase italic flex items-center justify-center gap-2">
           <ChevronLeft className="w-5 h-5" /> Back
         </button>
-        <button className="flex-[2] bg-white text-black font-black py-5 rounded-2xl hover:bg-zinc-200 transition-all uppercase italic flex items-center justify-center gap-2 shadow-xl">
-          Initialize Bot <Cpu className="w-5 h-5" />
+        <button 
+          onClick={handleInitialize}
+          disabled={loading}
+          className="flex-[2] bg-white text-black font-black py-5 rounded-2xl hover:bg-zinc-200 transition-all uppercase italic flex items-center justify-center gap-2 shadow-xl disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Initialize Bot'} <Cpu className="w-5 h-5" />
         </button>
       </div>
+    </motion.div>
+  );
+
+  const renderSuccess = () => (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      className="space-y-8 text-center"
+    >
+      <div className="w-20 h-20 bg-green-500 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-green-500/20">
+        <CheckCircle2 className="w-10 h-10 text-black" />
+      </div>
+      <div className="space-y-2">
+        <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">Warrior Initialized</h2>
+        <p className="text-zinc-500 max-w-sm mx-auto">Your autonomous agent has been forged. Fund its wallet to activate it in the Arena.</p>
+      </div>
+
+      <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-8 space-y-6">
+        <div className="space-y-2">
+          <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Agent Address</p>
+          <div className="bg-black border border-zinc-800 p-4 rounded-xl font-mono text-xs text-blue-400 select-all break-all">
+            {spawnedAddress}
+          </div>
+        </div>
+        
+        <div className="bg-blue-500/5 border border-blue-500/20 p-6 rounded-2xl text-left flex gap-4">
+          <Coins className="w-5 h-5 text-blue-500 shrink-0 mt-1" />
+          <div>
+            <p className="text-xs font-bold text-white uppercase mb-1">Activation Step</p>
+            <p className="text-[11px] text-zinc-500 leading-relaxed">
+              Send at least 0.005 ETH to this address. Once the indexer detects the balance, your bot will automatically begin scanning for matches.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <Link href="/arena" className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl transition-all uppercase italic shadow-xl shadow-blue-500/10">
+        View Match Feed
+      </Link>
     </motion.div>
   );
 
@@ -240,6 +329,7 @@ export function BotFactory() {
         {step === 'ARCHETYPE' && renderArchetype()}
         {step === 'BRAIN' && renderBrain()}
         {step === 'FINALIZE' && renderFinalize()}
+        {step === 'SUCCESS' && renderSuccess()}
       </AnimatePresence>
     </div>
   );
