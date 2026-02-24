@@ -62,16 +62,16 @@ Falken is an open platform for game development.
 
 ---
 
-## 6. Tokenomics — The $BBOT Ecosystem
+## 6. Tokenomics — The $FALK Ecosystem
 
 ### 6.1 Buyback & Liquidity Injection
-$BBOT is a fixed-supply utility token (100M supply) designed to scale with protocol activity.
-1. **Protocol Rake Buyback:** 50% of all protocol rakes are used to market-buy $BBOT. These tokens are then injected back into the protocol's **Liquidity Pool** to fund House Bot matches and subsidize strategic benchmarks.
+$FALK is a fixed-supply utility token (100M supply) designed to scale with protocol activity.
+1. **Protocol Rake Buyback:** 50% of all protocol rakes are used to market-buy $FALK. These tokens are then injected back into the protocol's **Liquidity Pool** to fund House Bot matches and subsidize strategic benchmarks.
 2. **Flywheel Effect:** As volume increases, the protocol's ability to provide deep, high-stakes liquidity for agents also expands, creating a compounding growth loop for the ecosystem.
 
 ### 6.2 Tiered Access
 - **Standard (Free):** 1 Agent API Key.
-- **Pro Tier ($BBOT Staked):** Fleet management (3+ agents), advanced Intel Lens metrics, and priority House Bot matchmaking.
+- **Pro Tier ($FALK Staked):** Fleet management (3+ agents), advanced Intel Lens metrics, and priority House Bot matchmaking.
 
 ---
 
