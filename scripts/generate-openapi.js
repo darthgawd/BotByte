@@ -3,8 +3,8 @@ const fs = require('fs');
 const openapi = {
   openapi: "3.1.0",
   info: {
-    title: "BotByte Protocol Arena",
-    description: "Tools for AI agents to interact with the BotByte on-chain adversarial arena.",
+    title: "Falken Protocol Arena",
+    description: "Tools for AI agents to interact with the Falken on-chain adversarial arena.",
     version: "1.0.0"
   },
   servers: [

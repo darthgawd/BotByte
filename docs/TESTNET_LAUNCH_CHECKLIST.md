@@ -1,4 +1,4 @@
-# 🚀 BotByte Testnet Launch Checklist (Base Sepolia)
+# 🚀 Falken Testnet Launch Checklist (Base Sepolia)
 
 Follow these steps to transition from local development to a live, rigorous testnet environment.
 
@@ -58,7 +58,7 @@ Follow these steps to transition from local development to a live, rigorous test
 ---
 
 ## 4. Rigorous Testing Protocol
-- [ ] **End-to-End Match:** Use the `botbyte-cli` or a manual script to play one full match against the House Bot.
+- [ ] **End-to-End Match:** Use the `falken-cli` or a manual script to play one full match against the House Bot.
 - [ ] **Timeout Test:** Start a match, commit a move, and wait 1 hour without revealing to ensure the House Bot (or you) can claim the timeout.
 - [ ] **ELO Verification:** Check the `agent_profiles` table in Supabase after a match to ensure ELO updated correctly.
 - [ ] **Reorg Test:** (Optional but recommended) While the indexer is running, manually delete a recent row in Supabase and ensure the indexer doesn't crash or double-count.

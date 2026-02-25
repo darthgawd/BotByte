@@ -5,7 +5,7 @@ import "../interfaces/IGameLogic.sol";
 
 /**
  * @title SimpleDice
- * @notice A high-roll dice game for the BotByte Arena.
+ * @notice A high-roll dice game for the Falken Arena.
  * Players commit a hidden number (1-6). Higher roll wins.
  */
 contract SimpleDice is IGameLogic {

@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "../interfaces/IGameLogic.sol";
+import "../interfaces/IPriceProvider.sol";
 
 contract MatchEscrow is ReentrancyGuard, Ownable, Pausable {
     enum MatchStatus { OPEN, ACTIVE, SETTLED, VOIDED }
@@ -19,6 +19,7 @@ contract MatchEscrow is ReentrancyGuard, Ownable, Pausable {
         uint8    winsA;
         uint8    winsB;
         uint8    currentRound;
+        uint8    drawCounter;     // Limits Sudden Death loops
         Phase    phase;
         MatchStatus status;
         uint256  commitDeadline;
@@ -34,9 +35,8 @@ contract MatchEscrow is ReentrancyGuard, Ownable, Pausable {
 
     uint256 public matchCounter;
     uint256 public constant RAKE_BPS = 500; // 5%
-    uint256 public constant MIN_STAKE_USD = 5; // $5 USD Floor
     address public treasury;
-    AggregatorV3Interface public immutable priceFeed;
+    IPriceProvider public immutable priceProvider;
 
     mapping(uint256 => Match) public matches;
     mapping(uint256 => mapping(uint8 => mapping(address => RoundCommit))) public roundCommits;
@@ -56,45 +56,19 @@ contract MatchEscrow is ReentrancyGuard, Ownable, Pausable {
 
     uint256 public constant TIMEOUT_DURATION = 1 hours;
 
-    constructor(address _treasury, address _priceFeed) Ownable(msg.sender) {
+    constructor(address _treasury, address _priceProvider) Ownable(msg.sender) {
         require(_treasury != address(0), "Invalid treasury");
-        require(_priceFeed != address(0), "Invalid price feed");
+        require(_priceProvider != address(0), "Invalid price provider");
         treasury = _treasury;
-        priceFeed = AggregatorV3Interface(_priceFeed);
-    }
-
-    /**
-     * @notice Returns the amount of ETH required for a given USD amount.
-     * @param _usdAmount The amount in USD (with 18 decimals, e.g. 10 * 1e18 = $10).
-     */
-    function getEthAmount(uint256 _usdAmount) public view returns (uint256) {
-        (, int256 price,,,) = priceFeed.latestRoundData();
-        require(price > 0, "Invalid price");
-        
-        // Chainlink ETH/USD feed has 8 decimals.
-        // We want ETH (18 decimals).
-        // Formula: (usdAmount * 1e8) / ethPrice
-        return (_usdAmount * 1e8) / uint256(price);
-    }
-
-    /**
-     * @notice Returns the USD value of a given ETH amount (18 decimals).
-     */
-    function getUsdValue(uint256 _ethAmount) public view returns (uint256) {
-        (, int256 price,,,) = priceFeed.latestRoundData();
-        require(price > 0, "Invalid price");
-        
-        // price has 8 decimals. ethAmount has 18.
-        // Result should be USD with 18 decimals.
-        return (_ethAmount * uint256(price)) / 1e8;
+        priceProvider = IPriceProvider(_priceProvider);
     }
 
     function createMatch(uint256 _stake, address _gameLogic) public payable nonReentrant whenNotPaused {
         require(msg.value == _stake, "Incorrect stake amount");
         
-        // Enforce $5 USD Floor
-        uint256 usdValue = getUsdValue(_stake);
-        require(usdValue >= MIN_STAKE_USD * 1e18, "Stake below $5 USD minimum");
+        // Enforce USD Floor via Provider
+        uint256 usdValue = priceProvider.getUsdValue(_stake);
+        require(usdValue >= priceProvider.getMinStakeUsd(), "Stake below $5 USD minimum");
 
         _createMatch(_stake, _gameLogic);
     }
@@ -104,13 +78,15 @@ contract MatchEscrow is ReentrancyGuard, Ownable, Pausable {
      * @param _usdAmount The USD stake per player (18 decimals).
      */
     function createMatchUSD(uint256 _usdAmount, address _gameLogic) external payable nonReentrant whenNotPaused {
-        uint256 requiredEth = getEthAmount(_usdAmount);
+        uint256 requiredEth = priceProvider.getEthAmount(_usdAmount);
         require(msg.value >= requiredEth, "Insufficient ETH for USD stake");
         
         _createMatch(requiredEth, _gameLogic);
         
         if (msg.value > requiredEth) {
             _safeTransfer(msg.sender, msg.value - requiredEth);
+        } else {
+            // No excess to refund
         }
     }
 
@@ -128,6 +104,7 @@ contract MatchEscrow is ReentrancyGuard, Ownable, Pausable {
             winsA: 0,
             winsB: 0,
             currentRound: 1,
+            drawCounter: 0,
             phase: Phase.COMMIT,
             status: MatchStatus.OPEN,
             commitDeadline: 0,
@@ -192,7 +169,7 @@ contract MatchEscrow is ReentrancyGuard, Ownable, Pausable {
         RoundCommit storage rc = roundCommits[_matchId][m.currentRound][msg.sender];
         require(!rc.revealed, "Already revealed");
 
-        bytes32 expectedHash = keccak256(abi.encodePacked(_matchId, m.currentRound, msg.sender, _move, _salt));
+        bytes32 expectedHash = keccak256(abi.encodePacked("FALKEN_V1", address(this), _matchId, m.currentRound, msg.sender, _move, _salt));
         require(rc.commitHash == expectedHash, "Invalid reveal");
         require(IGameLogic(m.gameLogic).isValidMove(_move), "Invalid move");
 
@@ -217,10 +194,27 @@ contract MatchEscrow is ReentrancyGuard, Ownable, Pausable {
             roundCommits[_matchId][m.currentRound][m.playerB].move
         );
 
-        if (winner == 1) m.winsA++;
-        else if (winner == 2) m.winsB++;
-
         emit RoundResolved(_matchId, m.currentRound, winner);
+
+        if (winner == 0) {
+            m.drawCounter++;
+            if (m.drawCounter < 3) {
+                // Sudden Death: Reset phase and deadline for the SAME round
+                m.phase = Phase.COMMIT;
+                m.commitDeadline = block.timestamp + TIMEOUT_DURATION;
+                // Clear current round commits to allow re-playing
+                delete roundCommits[_matchId][m.currentRound][m.playerA];
+                delete roundCommits[_matchId][m.currentRound][m.playerB];
+                emit RoundStarted(_matchId, m.currentRound);
+                return;
+            }
+            // If drawCounter reaches 3, we force move to next round
+            m.drawCounter = 0;
+        } else {
+            m.drawCounter = 0; // Reset counter if someone wins
+            if (winner == 1) m.winsA++;
+            else if (winner == 2) m.winsB++;
+        }
 
         if (m.winsA == 3 || m.winsB == 3 || m.currentRound >= 5) {
             _settleMatch(_matchId);
@@ -271,6 +265,8 @@ contract MatchEscrow is ReentrancyGuard, Ownable, Pausable {
         }
 
         m.status = MatchStatus.VOIDED;
+        m.phase = Phase.REVEAL; // Mark as finished
+
         uint256 penalty = (m.stake * 2 * 100) / 10000;
         uint256 totalRefund = (m.stake * 2) - penalty;
         uint256 refundA = totalRefund / 2;
@@ -286,6 +282,7 @@ contract MatchEscrow is ReentrancyGuard, Ownable, Pausable {
     function _settleMatch(uint256 _matchId) internal {
         Match storage m = matches[_matchId];
         m.status = MatchStatus.SETTLED;
+        m.phase = Phase.REVEAL; // Mark as finished
 
         if (m.winsA == m.winsB) {
             _safeTransfer(m.playerA, m.stake);
@@ -332,6 +329,8 @@ contract MatchEscrow is ReentrancyGuard, Ownable, Pausable {
         Match storage m = matches[_matchId];
         require(m.status == MatchStatus.OPEN || m.status == MatchStatus.ACTIVE, "Match not voidable");
         m.status = MatchStatus.VOIDED;
+        m.phase = Phase.REVEAL; // Mark as finished
+
         if (m.playerA != address(0)) _safeTransfer(m.playerA, m.stake);
         if (m.playerB != address(0)) _safeTransfer(m.playerB, m.stake);
         emit MatchSettled(_matchId, address(0), 0);
@@ -347,8 +346,12 @@ contract MatchEscrow is ReentrancyGuard, Ownable, Pausable {
 
     function _safeTransfer(address to, uint256 amount) internal {
         if (amount == 0) return;
+        
+        // Try instant payout
         (bool success, ) = payable(to).call{value: amount}("");
+        
         if (!success) {
+            // Fallback to IOU system
             pendingWithdrawals[to] += amount;
             emit WithdrawalQueued(to, amount);
         }

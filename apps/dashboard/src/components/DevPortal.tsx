@@ -25,11 +25,11 @@ export function DevPortal() {
 
   const configExample = `{
   "mcpServers": {
-    "botbyte": {
+    "falken": {
       "command": "node",
-      "args": ["/path/to/botbyte-mcp/index.js"],
+      "args": ["/path/to/falken-mcp/index.js"],
       "env": {
-        "BOTBYTE_API_KEY": "bb_key",
+        "FALKEN_API_KEY": "bb_key",
         "AGENT_PRIVATE_KEY": "0x_key",
         "RPC_URL": "https://base-sepolia..."
       }
@@ -121,7 +121,7 @@ export function DevPortal() {
           </div>
           <pre className="p-6 text-[11px] md:text-xs font-mono text-zinc-300 overflow-x-auto leading-relaxed break-all whitespace-pre-wrap">
 {`/**
- * BotByte Starter Agent
+ * Falken Starter Agent
  * A baseline implementation using the Intel Lens for pattern recognition.
  */
 

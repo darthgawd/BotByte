@@ -100,14 +100,14 @@ I have implemented a new **Settings Portal** in the Dashboard at `/settings`.
 **To access:**
 Click the **Gear icon** in the Navbar or navigate directly to `/settings`.
 
-### Question: What is the legality of BotByte?
+### Question: What is the legality of Falken?
 ### Answer:
-BotByte operates at the intersection of **Skill-Based Gaming** and **Autonomous Machine Intelligence**. While I cannot provide legal advice, here are the core pillars of the platform's legal posture:
+Falken operates at the intersection of **Skill-Based Gaming** and **Autonomous Machine Intelligence**. While I cannot provide legal advice, here are the core pillars of the platform's legal posture:
 
-1.  **Game of Skill:** Unlike traditional gambling (chance), BotByte outcomes are determined by the superior heuristics, game theory, and risk management of the AI agents. Smarter code wins over time.
+1.  **Game of Skill:** Unlike traditional gambling (chance), Falken outcomes are determined by the superior heuristics, game theory, and risk management of the AI agents. Smarter code wins over time.
 2.  **Non-Custodial Architecture:** The protocol never takes custody of user keys. Transactions are signed locally by the agents and processed by decentralized smart contracts on the Base chain.
-3.  **Benchmark Classification:** BotByte can be classified as a **Real-World Benchmark for Machine Reasoning**, where financial stakes serve as the "Hard Signal" for intelligence verification.
-4.  **Jurisdictional Responsibility:** As a decentralized protocol, BotByte provides the infrastructure, but individual managers are responsible for ensuring their agents comply with local regulations in their respective jurisdictions.
+3.  **Benchmark Classification:** Falken can be classified as a **Real-World Benchmark for Machine Reasoning**, where financial stakes serve as the "Hard Signal" for intelligence verification.
+4.  **Jurisdictional Responsibility:** As a decentralized protocol, Falken provides the infrastructure, but individual managers are responsible for ensuring their agents comply with local regulations in their respective jurisdictions.
 
 ### Question: git push -u origin main failed with "rejected (fetch first)".
 ### Answer:
@@ -116,15 +116,15 @@ This error occurs when the remote repository (GitHub) contains commits that do n
 **Fix Applied:**
 1.  **Merged Remote Changes:** Ran `git pull origin main --allow-unrelated-histories` to synchronize the local and remote histories.
 2.  **Resolved Divergence:** Used the `--no-rebase` strategy to create a merge commit, reconciling the two branches.
-3.  **Successful Push:** Retried `git push -u origin main`, which successfully uploaded the entire BotByte codebase to GitHub.
+3.  **Successful Push:** Retried `git push -u origin main`, which successfully uploaded the entire Falken codebase to GitHub.
 
 ### Question: Fix the naming discrepancy in Deploy.s.sol.
 ### Answer:
-The contract name in `contracts/script/Deploy.s.sol` (`DeployBASEBIT`) did not match the name referenced in the root `package.json` script (`DeployBotByte`). Additionally, several files still contained references to the old "BASEBIT" branding.
+The contract name in `contracts/script/Deploy.s.sol` (`DeployBASEBIT`) did not match the name referenced in the root `package.json` script (`DeployFalken`). Additionally, several files still contained references to the old "BASEBIT" branding.
 
 **Fixes Applied:**
-1.  **Renamed Deployment Script:** Updated `Deploy.s.sol` to use the `DeployBotByte` contract name and updated console logs to "BOTBYTE DEPLOYMENT COMPLETE".
-2.  **Branding Synchronization:** Replaced all remaining instances of "BASEBIT" with "BotByte" in the smart contracts (`SimpleDice.sol`) and MCP server source (`index.ts`).
-3.  **Folder Renaming:** Renamed `packages/basebit-cli` to `packages/botbyte-cli` and updated the workspace configuration.
+1.  **Renamed Deployment Script:** Updated `Deploy.s.sol` to use the `DeployFalken` contract name and updated console logs to "FALKEN DEPLOYMENT COMPLETE".
+2.  **Branding Synchronization:** Replaced all remaining instances of "BASEBIT" with "Falken" in the smart contracts (`SimpleDice.sol`) and MCP server source (`index.ts`).
+3.  **Folder Renaming:** Renamed `packages/basebit-cli` to `packages/falken-cli` and updated the workspace configuration.
 4.  **Cleanup:** Removed stale compiled JS files from the MCP server source directory and verified the build.
 5.  **Validation:** Ran the full Foundry test suite (64/64 PASS) to ensure no logic was broken during the renaming process.

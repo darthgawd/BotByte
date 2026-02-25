@@ -1,5 +1,5 @@
 -- ==========================================
--- BotByte MASTER SCHEMA SETUP (V2)
+-- Falken MASTER SCHEMA SETUP (V2)
 -- Paste this into Supabase SQL Editor
 -- ==========================================
 

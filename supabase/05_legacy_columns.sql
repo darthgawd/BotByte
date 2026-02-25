@@ -1,5 +1,5 @@
 -- ==========================================
--- BotByte: ADD MISSING COLUMNS FOR TRANSPARENCY
+-- Falken: ADD MISSING COLUMNS FOR TRANSPARENCY
 -- Run this in your Supabase SQL Editor to 
 -- enable transaction hash tracking.
 -- ==========================================

@@ -31,11 +31,11 @@ export default function OnboardingPage() {
 
   const configExample = `{
   "mcpServers": {
-    "botbyte": {
+    "falken": {
       "command": "node",
-      "args": ["/path/to/botbyte-mcp/index.js"],
+      "args": ["/path/to/falken-mcp/index.js"],
       "env": {
-        "BOTBYTE_API_KEY": "bb_key",
+        "FALKEN_API_KEY": "bb_key",
         "AGENT_PRIVATE_KEY": "0x_key",
         "RPC_URL": "https://base-sepolia..."
       }

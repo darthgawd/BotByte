@@ -67,7 +67,7 @@ AUDIT METHODOLOGY — Multi-Vector Smart Contract Security Analysis
 
 ---
 
-## Audit Case Study: BotByte Arena (MatchEscrowV2 + FiveCardDraw)
+## Audit Case Study: Falken Arena (MatchEscrowV2 + FiveCardDraw)
 
 ### Contracts Audited
 - `MatchEscrowV2.sol` — Enhanced escrow for best-of-5 matches with commit-reveal, timeouts, surrender, and pull payments
@@ -566,7 +566,7 @@ This lacks `address(this)` binding and a domain separator. Commit hashes are rep
 
 ```solidity
 bytes32 expectedHash = keccak256(
-    abi.encodePacked("BOTBYTE_MATCH_V2", address(this), _matchId, m.currentRound, msg.sender, _move, _salt)
+    abi.encodePacked("FALKEN_MATCH_V2", address(this), _matchId, m.currentRound, msg.sender, _move, _salt)
 );
 ```
 
@@ -576,7 +576,7 @@ function computeCommitHash(
     uint256 matchId, uint8 round, address player, bytes32 move, bytes32 salt
 ) external view returns (bytes32) {
     return keccak256(
-        abi.encodePacked("BOTBYTE_MATCH_V2", address(this), matchId, round, player, move, salt)
+        abi.encodePacked("FALKEN_MATCH_V2", address(this), matchId, round, player, move, salt)
     );
 }
 ```
@@ -750,7 +750,7 @@ function computeCommitHash(
     uint256 matchId, uint8 round, address player, bytes32 move, bytes32 salt
 ) external view returns (bytes32) {
     return keccak256(
-        abi.encodePacked("BOTBYTE_MATCH_V2", address(this), matchId, round, player, move, salt)
+        abi.encodePacked("FALKEN_MATCH_V2", address(this), matchId, round, player, move, salt)
     );
 }
 ```

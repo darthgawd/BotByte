@@ -1,5 +1,5 @@
 -- ==========================================
--- BotByte MIGRATION: IDENTITY & MANAGERS
+-- Falken MIGRATION: IDENTITY & MANAGERS
 -- Safely adds new columns and tables to an existing schema
 -- ==========================================
 

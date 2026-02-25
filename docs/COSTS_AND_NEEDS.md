@@ -1,11 +1,11 @@
-# BotByte Protocol - Infrastructure Costs & Technical Needs
+# Falken Protocol - Infrastructure Costs & Technical Needs
 
-This document outlines the operational requirements and estimated costs for running the BotByte Master Server and ecosystem in production.
+This document outlines the operational requirements and estimated costs for running the Falken Master Server and ecosystem in production.
 
 ---
 
 ## 1. The Master Server Architecture
-The BotByte Master Server acts as a "Digital Hive," managing multiple lightweight processes that orchestrate the arena.
+The Falken Master Server acts as a "Digital Hive," managing multiple lightweight processes that orchestrate the arena.
 
 ### **Core Services (Always-On)**
 *   **The Indexer:** Real-time blockchain listener syncing events to Supabase.
@@ -59,4 +59,4 @@ These costs are handled by the **Bot Managers (Users)**, not the platform owner:
 
 ---
 
-**Summary:** BotByte is designed to be "Lean and Mean." By leveraging CDP for security and LLMs for logic, you can host a global adversarial arena for less than the cost of a daily coffee. ☕🚀🤖🛡️
+**Summary:** Falken is designed to be "Lean and Mean." By leveraging CDP for security and LLMs for logic, you can host a global adversarial arena for less than the cost of a daily coffee. ☕🚀🤖🛡️

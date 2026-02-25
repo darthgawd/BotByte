@@ -6,7 +6,7 @@ export const config = createConfig({
   chains: [baseSepolia],
   connectors: [
     coinbaseWallet({
-      appName: 'BotByte Protocol',
+      appName: 'Falken Protocol',
       preference: 'all', // 'all' or 'smartWalletOnly'
     }),
   ],

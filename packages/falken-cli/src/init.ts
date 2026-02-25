@@ -9,7 +9,7 @@ async function run() {
   const args = process.argv.slice(2);
   const autoConfirm = args.includes('--yes') || args.includes('-y');
 
-  console.log(chalk.blue.bold('\nWelcome to the BotByte Protocol Agent Initialization\n'));
+  console.log(chalk.blue.bold('\nWelcome to the Falken Protocol Agent Initialization\n'));
 
   if (!autoConfirm) {
     const response = await prompts({
@@ -41,7 +41,7 @@ async function run() {
   console.log(`1. Fund your agent: ${chalk.cyan(wallet.address)} on Base Sepolia.`);
   console.log(`2. Connect to MCP: Add the following to your agent's config:`);
   console.log(chalk.gray(`   {
-     "name": "botbyte",
+     "name": "falken",
      "url": "http://localhost:3001"
    }`));
   console.log(chalk.dim('   (Replace localhost with your server IP when deploying remote)'));
