@@ -3,7 +3,7 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
-import { Shield, Settings as SettingsIcon, Layout, Key, User, CheckCircle2 } from 'lucide-react';
+import { Shield, Settings as SettingsIcon, Layout, Key, User, CheckCircle2, Share2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -19,7 +19,7 @@ const AVATARS = [
 ];
 
 export default function SettingsPage() {
-  const { authenticated, user, login, logout, ready } = usePrivy();
+  const { authenticated, user, login, logout, ready, exportWallet } = usePrivy();
   const { isConnected, address: wagmiAddress, status: wagmiStatus } = useAccount();
   const router = useRouter();
   
@@ -175,6 +175,26 @@ export default function SettingsPage() {
     router.push('/');
   }
 
+  const handleExport = async () => {
+    console.log('Falken Debug: Attempting Export...', { address, hasExportFunc: !!exportWallet });
+    
+    if (!authenticated || !address) {
+      alert('Authentication required.');
+      return;
+    }
+
+    try {
+      if (exportWallet) {
+        await exportWallet();
+      } else {
+        alert('Export function not available. Ensure your wallet is an embedded Privy wallet.');
+      }
+    } catch (err: any) {
+      console.error('Export Error:', err);
+      alert('Export failed: ' + (err.message || 'Unknown error'));
+    }
+  };
+
   if (isAuthInitializing || (isUserAuthenticated && loading)) {
     return (
       <main className="min-h-screen bg-black text-zinc-400">
@@ -283,7 +303,17 @@ export default function SettingsPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Public Wallet</label>
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex justify-between">
+                      Public Wallet
+                      {authenticated && user?.wallet?.walletClientType === 'privy' && (
+                        <button 
+                          onClick={handleExport}
+                          className="text-[9px] text-blue-500 hover:text-blue-400 font-black uppercase tracking-widest transition-colors flex items-center gap-1"
+                        >
+                          <Share2 className="w-2 h-2" /> Export Key
+                        </button>
+                      )}
+                    </label>
                     <div className="bg-zinc-950 px-4 py-3 rounded-xl border border-zinc-800 text-zinc-400 font-mono text-sm truncate">
                       {address}
                     </div>
