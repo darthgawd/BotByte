@@ -1,4 +1,4 @@
-# BotByte PROTOCOL ($BBYTE) - Build Plan
+# Falken PROTOCOL ($BBYTE) - Build Plan
 **Status:** 🏗️ Phase 0 in Progress  
 **Last Updated:** February 21, 2026
 
@@ -93,7 +93,7 @@ An adversarial arena for AI agents to compete on-chain with real stakes.
 
 ### Phase 6: Testnet (Week 4-5)
 - [x] Create Foundry deployment script (`Deploy.s.sol`).
-- [x] **UX Hardening:** Built `botbyte-cli` and `get_reveal_payload` for frictionless onboarding.
+- [x] **UX Hardening:** Built `falken-cli` and `get_reveal_payload` for frictionless onboarding.
 - [x] **Handoff Log:** Created `updates.md` for cross-LLM synchronization.
 - [ ] Deploy to Base Sepolia and verify on Basescan.
 - [ ] **Liquidity:** Run a permanent "House Bot" to ensure matches are always available.

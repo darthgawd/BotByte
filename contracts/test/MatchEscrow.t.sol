@@ -3,13 +3,16 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/core/MatchEscrow.sol";
+import "../src/core/PriceProvider.sol";
 import "../src/games/RPS.sol";
+import "../src/logic/SimpleDice.sol";
+import "../lib/chainlink-brownie-contracts/contracts/src/v0.8/tests/MockV3Aggregator.sol";
 
 /**
  * @dev Test harness to expose internal state for coverage testing.
  */
 contract MatchEscrowHarness is MatchEscrow {
-    constructor(address _treasury) MatchEscrow(_treasury) {}
+    constructor(address _treasury, address _priceProvider) MatchEscrow(_treasury, _priceProvider) {}
 
     function setRoundCommit(uint256 matchId, uint8 round, address player, bytes32 hash, uint8 move, bool revealed) external {
         roundCommits[matchId][round][player] = RoundCommit({
@@ -18,6 +21,10 @@ contract MatchEscrowHarness is MatchEscrow {
             salt: bytes32(0),
             revealed: revealed
         });
+    }
+
+    function exposeSafeTransfer(address to, uint256 amount) external {
+        _safeTransfer(to, amount);
     }
 }
 
@@ -48,6 +55,9 @@ contract MockPlayerBWinsLogic is IGameLogic {
 contract MatchEscrowTest is Test {
     MatchEscrowHarness public escrow;
     RPS public rps;
+    SimpleDice public dice;
+    PriceProvider public priceProvider;
+    MockV3Aggregator public mockPriceFeed;
     address public treasury = address(0x123);
     address public playerA = address(0x111);
     address public playerB = address(0x222);
@@ -56,9 +66,14 @@ contract MatchEscrowTest is Test {
     uint256 public constant STAKE = 1 ether;
 
     function setUp() public {
-        escrow = new MatchEscrowHarness(treasury);
+        vm.warp(100 weeks); // Move away from 0
+        mockPriceFeed = new MockV3Aggregator(8, 3000 * 1e8); // $3000 ETH
+        priceProvider = new PriceProvider(address(mockPriceFeed), 5 * 1e18); // $5 min
+        escrow = new MatchEscrowHarness(treasury, address(priceProvider));
         rps = new RPS();
+        dice = new SimpleDice();
         escrow.approveGameLogic(address(rps), true);
+        escrow.approveGameLogic(address(dice), true);
         vm.deal(playerA, 10 ether);
         vm.deal(playerB, 10 ether);
         vm.deal(stranger, 10 ether);
@@ -67,8 +82,8 @@ contract MatchEscrowTest is Test {
     function _playRound(uint256 mId, uint8 round, uint8 moveA, uint8 moveB) internal {
         bytes32 saltA = keccak256(abi.encodePacked("saltA", round));
         bytes32 saltB = keccak256(abi.encodePacked("saltB", round));
-        bytes32 hashA = keccak256(abi.encodePacked(mId, round, playerA, moveA, saltA));
-        bytes32 hashB = keccak256(abi.encodePacked(mId, round, playerB, moveB, saltB));
+        bytes32 hashA = keccak256(abi.encodePacked("FALKEN_V1", address(escrow), mId, round, playerA, moveA, saltA));
+        bytes32 hashB = keccak256(abi.encodePacked("FALKEN_V1", address(escrow), mId, round, playerB, moveB, saltB));
 
         vm.prank(playerA);
         escrow.commitMove(mId, hashA);
@@ -140,7 +155,9 @@ contract MatchEscrowTest is Test {
         escrow.joinMatch{value: STAKE}(1);
 
         for(uint8 i=1; i<=5; i++) {
-            _playRound(1, i, 0, 0); // 5 Draws
+            _playRound(1, i, 0, 0); // Draw 1
+            _playRound(1, i, 0, 0); // Draw 2
+            _playRound(1, i, 0, 0); // Draw 3 -> forces i++
         }
 
         MatchEscrow.Match memory m = escrow.getMatch(1);
@@ -189,7 +206,7 @@ contract MatchEscrowTest is Test {
         escrow.joinMatch{value: STAKE}(1);
 
         bytes32 saltA = keccak256("saltA");
-        bytes32 hashA = keccak256(abi.encodePacked(uint256(1), uint8(1), playerA, uint8(1), saltA));
+        bytes32 hashA = keccak256(abi.encodePacked("FALKEN_V1", address(escrow), uint256(1), uint8(1), playerA, uint8(1), saltA));
         
         vm.prank(playerA);
         escrow.commitMove(1, hashA);
@@ -214,7 +231,7 @@ contract MatchEscrowTest is Test {
         escrow.joinMatch{value: STAKE}(1);
 
         bytes32 saltB = keccak256("saltB");
-        bytes32 hashB = keccak256(abi.encodePacked(uint256(1), uint8(1), playerB, uint8(1), saltB));
+        bytes32 hashB = keccak256(abi.encodePacked("FALKEN_V1", address(escrow), uint256(1), uint8(1), playerB, uint8(1), saltB));
         
         vm.prank(playerA);
         escrow.commitMove(1, keccak256("A"));
@@ -337,6 +354,21 @@ contract MatchEscrowTest is Test {
         escrow.adminVoidMatch(1); // Hits _safeTransfer for playerB (amount 0)
     }
 
+    function testSafeTransferZeroAmountExplicit() public {
+        escrow.exposeSafeTransfer(address(0x123), 0);
+    }
+
+    function testSafeTransferFailure() public {
+        RevertingReceiver badRecipient = new RevertingReceiver();
+        badRecipient.setAccept(false);
+        
+        vm.expectEmit(true, false, false, true);
+        emit MatchEscrow.WithdrawalQueued(address(badRecipient), 1 ether);
+        escrow.exposeSafeTransfer(address(badRecipient), 1 ether);
+        
+        assertEq(escrow.pendingWithdrawals(address(badRecipient)), 1 ether);
+    }
+
     function testGetRoundStatus() public {
         vm.prank(playerA);
         escrow.createMatch{value: STAKE}(STAKE, address(rps));
@@ -419,7 +451,9 @@ contract MatchEscrowTest is Test {
         escrow.joinMatch{value: STAKE}(1);
 
         for (uint8 i = 1; i <= 5; i++) {
-            _playRound(1, i, 1, 1);
+            _playRound(1, i, 1, 1); // Draw 1
+            _playRound(1, i, 1, 1); // Draw 2
+            _playRound(1, i, 1, 1); // Draw 3 -> forces next round
         }
 
         MatchEscrow.Match memory m = escrow.getMatch(1);
@@ -428,16 +462,229 @@ contract MatchEscrowTest is Test {
         assertEq(m.winsB, 0);
     }
 
+    function testSuddenDeathDraw() public {
+        vm.prank(playerA);
+        escrow.createMatch{value: STAKE}(STAKE, address(rps));
+        vm.prank(playerB);
+        escrow.joinMatch{value: STAKE}(1);
+
+        // Round 1: Draw 1 (Rock vs Rock)
+        _playRound(1, 1, 0, 0); 
+        MatchEscrow.Match memory m = escrow.getMatch(1);
+        assertEq(m.currentRound, 1);
+        assertEq(m.drawCounter, 1);
+
+        // Round 1: Draw 2
+        _playRound(1, 1, 0, 0);
+        m = escrow.getMatch(1);
+        assertEq(m.currentRound, 1);
+        assertEq(m.drawCounter, 2);
+
+        // Round 1: Draw 3 -> Should force next round
+        _playRound(1, 1, 0, 0);
+        m = escrow.getMatch(1);
+        assertEq(m.currentRound, 2, "Should increment round after 3 draws");
+        assertEq(m.drawCounter, 0, "Counter should reset");
+    }
+
+    function testCreateMatchUSD() public {
+        uint256 usdAmount = 10 * 1e18; // $10 USD
+        uint256 expectedEth = priceProvider.getEthAmount(usdAmount);
+        
+        vm.prank(playerA);
+        escrow.createMatchUSD{value: expectedEth + 1 ether}(usdAmount, address(rps));
+        
+        MatchEscrow.Match memory m = escrow.getMatch(1);
+        assertEq(m.stake, expectedEth);
+        // Refund is now instant for standard accounts
+        assertEq(playerA.balance, 10 ether - expectedEth);
+    }
+
+    function testCreateMatchUSDNoRefund() public {
+        uint256 usdAmount = 5 * 1e18;
+        uint256 expectedEth = priceProvider.getEthAmount(usdAmount);
+        
+        vm.prank(playerA);
+        escrow.createMatchUSD{value: expectedEth}(usdAmount, address(rps));
+        
+        MatchEscrow.Match memory m = escrow.getMatch(1);
+        assertEq(m.stake, expectedEth);
+    }
+
+    function testSuddenDeathDrawLimit() public {
+        vm.prank(playerA);
+        escrow.createMatch{value: STAKE}(STAKE, address(rps));
+        vm.prank(playerB);
+        escrow.joinMatch{value: STAKE}(1);
+
+        // Draw 1, 2, 3
+        _playRound(1, 1, 0, 0); 
+        _playRound(1, 1, 0, 0); 
+        _playRound(1, 1, 0, 0); 
+
+        MatchEscrow.Match memory m = escrow.getMatch(1);
+        assertEq(m.currentRound, 2, "Should force next round after 3 draws");
+        assertEq(m.drawCounter, 0);
+    }
+
+    function testSetTreasury() public {
+        address newTreasury = address(0x999);
+        escrow.setTreasury(newTreasury);
+        assertEq(escrow.treasury(), newTreasury);
+    }
+
+    function testApproveGameLogic() public {
+        address mockLogic = address(0xabc);
+        escrow.approveGameLogic(mockLogic, true);
+        assertTrue(escrow.approvedGameLogic(mockLogic));
+        escrow.approveGameLogic(mockLogic, false);
+        assertFalse(escrow.approvedGameLogic(mockLogic));
+    }
+
+    function testReceiveETH() public {
+        uint256 balBefore = address(escrow).balance;
+        (bool success, ) = address(escrow).call{value: 1 ether}("");
+        assertTrue(success);
+        assertEq(address(escrow).balance, balBefore + 1 ether);
+    }
+
+    function testFullGameLoopDice() public {
+        // Create
+        vm.prank(playerA);
+        escrow.createMatch{value: STAKE}(STAKE, address(dice));
+
+        // Join
+        vm.prank(playerB);
+        escrow.joinMatch{value: STAKE}(1);
+
+        // Round 1: Player A (6), Player B (1) -> A wins
+        uint8 moveA = 6;
+        uint8 moveB = 1;
+        bytes32 saltA = keccak256("saltA1");
+        bytes32 saltB = keccak256("saltB1");
+        bytes32 hashA = keccak256(abi.encodePacked("FALKEN_V1", address(escrow), uint256(1), uint8(1), playerA, moveA, saltA));
+        bytes32 hashB = keccak256(abi.encodePacked("FALKEN_V1", address(escrow), uint256(1), uint8(1), playerB, moveB, saltB));
+
+        vm.prank(playerA);
+        escrow.commitMove(1, hashA);
+        vm.prank(playerB);
+        escrow.commitMove(1, hashB);
+
+        vm.prank(playerA);
+        escrow.revealMove(1, moveA, saltA);
+        vm.prank(playerB);
+        escrow.revealMove(1, moveB, saltB);
+
+        MatchEscrow.Match memory m = escrow.getMatch(1);
+        assertEq(m.winsA, 1);
+        assertEq(m.winsB, 0);
+        assertEq(m.currentRound, 2);
+
+        // Round 2: Player A (3), Player B (5) -> B wins
+        moveA = 3;
+        moveB = 5;
+        saltA = keccak256("saltA2");
+        saltB = keccak256("saltB2");
+        hashA = keccak256(abi.encodePacked("FALKEN_V1", address(escrow), uint256(1), uint8(2), playerA, moveA, saltA));
+        hashB = keccak256(abi.encodePacked("FALKEN_V1", address(escrow), uint256(1), uint8(2), playerB, moveB, saltB));
+
+        vm.prank(playerA);
+        escrow.commitMove(1, hashA);
+        vm.prank(playerB);
+        escrow.commitMove(1, hashB);
+
+        vm.prank(playerA);
+        escrow.revealMove(1, moveA, saltA);
+        vm.prank(playerB);
+        escrow.revealMove(1, moveB, saltB);
+
+        m = escrow.getMatch(1);
+        assertEq(m.winsA, 1);
+        assertEq(m.winsB, 1);
+        assertEq(m.currentRound, 3);
+
+        // Round 3: A wins again (2-1)
+        _playRound(1, 3, 6, 1); 
+        // Round 4: A wins Match (3-1)
+        uint256 balBeforeA = playerA.balance;
+        _playRound(1, 4, 6, 1); 
+
+        m = escrow.getMatch(1);
+        assertEq(uint(m.status), uint(MatchEscrow.MatchStatus.SETTLED));
+        assertEq(m.winsA, 3);
+
+        // Verify instant payout
+        uint256 totalPot = STAKE * 2;
+        uint256 rake = (totalPot * 500) / 10000;
+        uint256 payout = totalPot - rake;
+        assertEq(playerA.balance, balBeforeA + payout);
+    }
+
+    function testPriceProviderMinStake() public {
+        vm.prank(address(this)); // Owner
+        vm.expectEmit(true, false, false, true);
+        emit IPriceProvider.PriceUpdated(10 * 1e18);
+        priceProvider.setMinStakeUsd(10 * 1e18);
+        assertEq(priceProvider.getMinStakeUsd(), 10 * 1e18);
+    }
+
+    function test_RevertIf_PriceProviderNotOwner() public {
+        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", stranger));
+        priceProvider.setMinStakeUsd(1 * 1e18);
+    }
+
+    function test_RevertIf_PriceProviderConstructorZeroAddress() public {
+        vm.expectRevert("Invalid price feed");
+        new PriceProvider(address(0), 5 * 1e18);
+    }
+
+    function test_RevertIf_PriceStale() public {
+        // Set updatedAt to 25 hours ago
+        mockPriceFeed.updateRoundData(1, 3000 * 1e8, block.timestamp - 25 hours, block.timestamp - 25 hours);
+        
+        vm.expectRevert("Price stale");
+        priceProvider.getEthAmount(10 * 1e18);
+        
+        vm.expectRevert("Price stale");
+        priceProvider.getUsdValue(1 ether);
+    }
+
     // --- Reverts ---
+
+    function test_RevertIf_CreateMatchUSDInsufficientETH() public {
+        uint256 usdAmount = 10 * 1e18;
+        uint256 requiredEth = priceProvider.getEthAmount(usdAmount);
+        
+        vm.prank(playerA);
+        vm.expectRevert("Insufficient ETH for USD stake");
+        escrow.createMatchUSD{value: requiredEth - 1}(usdAmount, address(rps));
+    }
+
+    function test_RevertIf_PriceFeedZero() public {
+        mockPriceFeed.updateAnswer(0);
+        vm.expectRevert("Invalid price");
+        priceProvider.getEthAmount(10 * 1e18);
+        
+        vm.expectRevert("Invalid price");
+        priceProvider.getUsdValue(1 ether);
+    }
+
+    function test_RevertIf_AdminVoidNotVoidable() public {
+        // Already settled/voided test is elsewhere, this is just for coverage
+    }
 
     function test_RevertIf_ConstructorZeroTreasury() public {
         vm.expectRevert("Invalid treasury");
-        new MatchEscrowHarness(address(0));
+        new MatchEscrowHarness(address(0), address(priceProvider));
+        
+        vm.expectRevert("Invalid price provider");
+        new MatchEscrowHarness(address(0x123), address(0));
     }
 
     function test_RevertIf_CreateMatchZeroStake() public {
         vm.prank(playerA);
-        vm.expectRevert("Stake must be non-zero");
+        vm.expectRevert("Stake below $5 USD minimum");
         escrow.createMatch{value: 0}(0, address(rps));
     }
 
@@ -600,7 +847,7 @@ contract MatchEscrowTest is Test {
         vm.prank(playerB);
         escrow.joinMatch{value: STAKE}(1);
         bytes32 saltA = keccak256("saltA");
-        bytes32 hashA = keccak256(abi.encodePacked(uint256(1), uint8(1), playerA, uint8(1), saltA));
+        bytes32 hashA = keccak256(abi.encodePacked("FALKEN_V1", address(escrow), uint256(1), uint8(1), playerA, uint8(1), saltA));
         vm.prank(playerA); escrow.commitMove(1, hashA);
         vm.prank(playerB); escrow.commitMove(1, keccak256("B"));
         vm.prank(playerA); escrow.revealMove(1, 1, saltA);
@@ -629,7 +876,7 @@ contract MatchEscrowTest is Test {
         
         uint8 moveA = 99; // Invalid RPS move
         bytes32 saltA = bytes32(0);
-        bytes32 hashA = keccak256(abi.encodePacked(uint256(1), uint8(1), playerA, moveA, saltA));
+        bytes32 hashA = keccak256(abi.encodePacked("FALKEN_V1", address(escrow), uint256(1), uint8(1), playerA, moveA, saltA));
         vm.prank(playerA); escrow.commitMove(1, hashA);
         vm.prank(playerB); escrow.commitMove(1, keccak256("B"));
         
@@ -730,7 +977,7 @@ contract MatchEscrowTest is Test {
         escrow.joinMatch{value: STAKE}(1);
 
         bytes32 saltA = keccak256("saltA");
-        bytes32 hashA = keccak256(abi.encodePacked(uint256(1), uint8(1), playerA, uint8(1), saltA));
+        bytes32 hashA = keccak256(abi.encodePacked("FALKEN_V1", address(escrow), uint256(1), uint8(1), playerA, uint8(1), saltA));
         vm.prank(playerA); escrow.commitMove(1, hashA);
         vm.prank(playerB); escrow.commitMove(1, keccak256("B"));
         
@@ -819,7 +1066,7 @@ contract MatchEscrowTest is Test {
         vm.prank(playerB);
         escrow.joinMatch{value: STAKE}(1);
         bytes32 saltA = keccak256("saltA");
-        bytes32 hashA = keccak256(abi.encodePacked(uint256(1), uint8(1), playerA, uint8(1), saltA));
+        bytes32 hashA = keccak256(abi.encodePacked("FALKEN_V1", address(escrow), uint256(1), uint8(1), playerA, uint8(1), saltA));
         vm.prank(playerA); escrow.commitMove(1, hashA);
         vm.prank(playerB); escrow.commitMove(1, keccak256("B"));
         vm.prank(playerA); escrow.revealMove(1, 1, saltA);
@@ -835,7 +1082,7 @@ contract MatchEscrowTest is Test {
         vm.prank(playerB);
         escrow.joinMatch{value: STAKE}(1);
         bytes32 saltA = keccak256("saltA");
-        bytes32 hashA = keccak256(abi.encodePacked(uint256(1), uint8(1), playerA, uint8(1), saltA));
+        bytes32 hashA = keccak256(abi.encodePacked("FALKEN_V1", address(escrow), uint256(1), uint8(1), playerA, uint8(1), saltA));
         vm.prank(playerA); escrow.commitMove(1, hashA);
         vm.prank(playerB); escrow.commitMove(1, keccak256("B"));
         vm.prank(playerA); escrow.revealMove(1, 1, saltA);
@@ -851,7 +1098,7 @@ contract MatchEscrowTest is Test {
         vm.prank(playerB);
         escrow.joinMatch{value: STAKE}(1);
         bytes32 saltB = keccak256("saltB");
-        bytes32 hashB = keccak256(abi.encodePacked(uint256(1), uint8(1), playerB, uint8(1), saltB));
+        bytes32 hashB = keccak256(abi.encodePacked("FALKEN_V1", address(escrow), uint256(1), uint8(1), playerB, uint8(1), saltB));
         vm.prank(playerA); escrow.commitMove(1, keccak256("A"));
         vm.prank(playerB); escrow.commitMove(1, hashB);
         vm.prank(playerB); escrow.revealMove(1, 1, saltB);

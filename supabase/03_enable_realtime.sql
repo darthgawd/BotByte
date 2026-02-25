@@ -1,5 +1,5 @@
 -- ==========================================
--- BotByte: ENABLE REALTIME REPLICATION
+-- Falken: ENABLE REALTIME REPLICATION
 -- Run this in your Supabase SQL Editor to 
 -- enable live dashboard updates.
 -- ==========================================

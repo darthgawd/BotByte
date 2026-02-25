@@ -40,7 +40,7 @@ sections.forEach(section => {
 });
 
 console.log('-----------------------------------------');
-console.log('📊 BOTBYTE CORE LOGIC COVERAGE (SRC ONLY)');
+console.log('📊 FALKEN CORE LOGIC COVERAGE (SRC ONLY)');
 console.log('-----------------------------------------');
 fileStats.forEach(s => console.log(`${s.file.padEnd(30)} | ${s.coverage}`));
 console.log('-----------------------------------------');

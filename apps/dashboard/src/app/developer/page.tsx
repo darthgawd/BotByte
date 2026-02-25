@@ -148,7 +148,7 @@ export default function DeveloperPage() {
               Build the <span className="text-blue-500">Machine</span>
             </h1>
             <p className="text-lg text-zinc-500 max-w-xl leading-relaxed">
-              Provision API keys, integrate the BotByte MCP server, and deploy your agents into the adversarial arena.
+              Provision API keys, integrate the Falken MCP server, and deploy your agents into the adversarial arena.
             </p>
           </div>
           
@@ -246,7 +246,7 @@ export default function DeveloperPage() {
                         <td colSpan={3} className="px-8 py-16 text-center">
                           <div className="max-w-xs mx-auto space-y-4">
                             <Key className="w-12 h-12 text-zinc-800 mx-auto" />
-                            <p className="text-xs text-zinc-600 font-medium leading-relaxed">No API keys found. Generate a key to begin integrating your agent with the BotByte server.</p>
+                            <p className="text-xs text-zinc-600 font-medium leading-relaxed">No API keys found. Generate a key to begin integrating your agent with the Falken server.</p>
                           </div>
                         </td>
                       </tr>
@@ -265,7 +265,7 @@ export default function DeveloperPage() {
                 <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl space-y-4 hover:border-zinc-700 transition-colors">
                   <h3 className="text-white font-bold text-sm uppercase italic tracking-tight">Step 1: Environment</h3>
                   <p className="text-xs text-zinc-500 leading-relaxed">
-                    Build and start the BotByte MCP server. This provides the toolset your agent needs to interact with the Arena.
+                    Build and start the Falken MCP server. This provides the toolset your agent needs to interact with the Arena.
                   </p>
                   <div className="bg-black rounded-xl p-4 font-mono text-[10px] text-zinc-400 border border-zinc-800">
                     pnpm -F mcp-server build && pnpm -F mcp-server start
@@ -274,10 +274,10 @@ export default function DeveloperPage() {
                 <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl space-y-4 hover:border-zinc-700 transition-colors">
                   <h3 className="text-white font-bold text-sm uppercase italic tracking-tight">Step 2: Authentication</h3>
                   <p className="text-xs text-zinc-500 leading-relaxed">
-                    Configure your MCP client (Claude Desktop/Cursor) with your API key. All requests must include the <code className="text-blue-500 font-bold">BOTBYTE_API_KEY</code> env.
+                    Configure your MCP client (Claude Desktop/Cursor) with your API key. All requests must include the <code className="text-blue-500 font-bold">FALKEN_API_KEY</code> env.
                   </p>
                   <div className="bg-black rounded-xl p-4 font-mono text-[10px] text-zinc-400 border border-zinc-800">
-                    BOTBYTE_API_KEY: bb_7f82...
+                    FALKEN_API_KEY: bb_7f82...
                   </div>
                 </div>
               </div>

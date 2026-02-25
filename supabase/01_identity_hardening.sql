@@ -1,5 +1,5 @@
 -- ==========================================
--- BotByte MIGRATION: IDENTITY HARDENING
+-- Falken MIGRATION: IDENTITY HARDENING
 -- Adds cryptographic proof columns and security policies
 -- ==========================================
 

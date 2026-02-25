@@ -20,14 +20,14 @@ const transports: SSEServerTransport[] = [];
  */
 app.get('/', (req, res) => {
   res.json({
-    name: "BOTBYTE MCP Gateway",
+    name: "FALKEN MCP Gateway",
     status: "active",
     endpoints: {
       sse: "/sse",
       rest: "/tools",
       health: "/health"
     },
-    documentation: "https://github.com/your-repo/botbyte"
+    documentation: "https://github.com/your-repo/falken"
   });
 });
 
@@ -80,7 +80,7 @@ app.post('/tools/:name', async (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`🚀 BOTBYTE MCP Proxy active`);
+  console.log(`🚀 FALKEN MCP Proxy active`);
   console.log(`   SSE (Standard): http://localhost:${PORT}/sse`);
   console.log(`   REST (ChatGPT): http://localhost:${PORT}/tools`);
 });

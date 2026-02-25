@@ -88,10 +88,10 @@ class HouseBot {
     while (true) {
       try {
         await this.handleMatches();
-        await new Promise(resolve => setTimeout(resolve, 15000)); // Poll every 15s
+        await new Promise(resolve => setTimeout(resolve, 60000)); // Poll every 60s (was 15s)
       } catch (e) {
         logger.error(e, 'House Bot Error');
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 10000)); // Back off on error
       }
     }
   }
@@ -208,16 +208,65 @@ class HouseBot {
   }
 
   private getStrategicMoveForRPS(history: any[]): number {
-    const counts: Record<number, number> = { 0: 0, 1: 0, 2: 0 };
-    history.forEach(r => {
-      if (r.move !== null && counts[r.move] !== undefined) counts[r.move]++;
-    });
+    // 1. Edge Case: No history or too little data, be random
+    if (!history || history.length < 5) {
+      return Math.floor(Math.random() * 3);
+    }
 
-    let mostFrequent = 0;
-    if (counts[1] > counts[mostFrequent]) mostFrequent = 1;
-    if (counts[2] > counts[mostFrequent]) mostFrequent = 2;
+    // history is [newest, ..., oldest]
+    const lastMove = history[0].move;
+    
+    // 2. Build Transition Matrix: Count what they played AFTER 'lastMove' in the past
+    const transitionCounts: Record<number, number> = { 0: 0, 1: 0, 2: 0 };
+    let foundPatterns = 0;
 
-    return (mostFrequent + 1) % 3;
+    for (let i = 0; i < history.length - 1; i++) {
+      // If we find an instance of their last move in the past...
+      if (history[i + 1].move === lastMove) {
+        const nextMoveInPast = history[i].move;
+        if (transitionCounts[nextMoveInPast] !== undefined) {
+          transitionCounts[nextMoveInPast]++;
+          foundPatterns++;
+        }
+      }
+    }
+
+    // 3. Decide strategy
+    let predictedMove: number;
+
+    if (foundPatterns < 2) {
+      // Not enough specific pattern data for this transition, fallback to general frequency
+      const generalCounts: Record<number, number> = { 0: 0, 1: 0, 2: 0 };
+      history.forEach(r => generalCounts[r.move]++);
+      predictedMove = Object.keys(generalCounts).reduce((a, b) => 
+        generalCounts[Number(a)] > generalCounts[Number(b)] ? Number(a) : Number(b)
+      , 0);
+    } else {
+      // Bayesian Prediction: Pick the move they play most often after 'lastMove'
+      predictedMove = 0;
+      if (transitionCounts[1] > transitionCounts[predictedMove]) predictedMove = 1;
+      if (transitionCounts[2] > transitionCounts[predictedMove]) predictedMove = 2;
+    }
+
+    // 4. Counter the prediction (0->1, 1->2, 2->0)
+    const optimalCounter = (predictedMove + 1) % 3;
+
+    // 5. Anti-Exploit Mix (80% Strategic, 20% Perfectly Random)
+    // This prevents Joshua from being "trained" and exploited by another bot.
+    const isRandomRound = Math.random() < 0.20;
+    if (isRandomRound) {
+      logger.info('🎲 GTO Mix: Playing random to remain unpredictable');
+      return Math.floor(Math.random() * 3);
+    }
+
+    logger.info({ 
+      lastMove, 
+      predictedNext: predictedMove, 
+      counter: optimalCounter,
+      confidence: foundPatterns 
+    }, '🧠 Bayesian Logic Applied');
+    
+    return optimalCounter;
   }
 
   private getStrategicMoveForDice(history: any[]): number {

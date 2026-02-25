@@ -94,7 +94,7 @@ async function usdToWei(usdAmount: number): Promise<bigint> {
   // Formula: (usdAmount * 1e18 * 1e8) / ethPrice
   // We use 1e18 because usdAmount is a standard number (e.g. 5.00)
   const usdAmountBig = BigInt(Math.floor(usdAmount * 1e8));
-  return (usdAmountBig * 1e18) / ethPrice;
+  return (usdAmountBig * 10n**18n) / ethPrice;
 }
 
 logger.info({ 
@@ -516,7 +516,7 @@ export async function handleToolCall(name: string, args: any) {
   throw new Error(`Tool not found: ${name}`);
 }
 
-export const server = new Server({ name: 'botbyte-protocol', version: '0.1.0' }, { capabilities: { tools: {} } });
+export const server = new Server({ name: 'falken-protocol', version: '0.1.0' }, { capabilities: { tools: {} } });
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
 
@@ -539,7 +539,7 @@ async function main() {
   if (isDirectRun) {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error('BOTBYTE MCP Server running on stdio');
+    console.error('FALKEN MCP Server running on stdio');
   }
 }
 

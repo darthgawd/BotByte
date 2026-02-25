@@ -48,7 +48,7 @@ export function IdentitySetup() {
     setError(null);
 
     try {
-      const message = `BotByte Identity Claim:\nAddress: ${address}\nNickname: ${nickname}`;
+      const message = `Falken Identity Claim:\nAddress: ${address}\nNickname: ${nickname}`;
       const signature = await signMessageAsync({ message });
 
       // 1. Ensure Manager Profile exists and get its ID

@@ -34,7 +34,7 @@ const ESCROW_ABI = [
 ];
 
 const processedLogIds = new Set<string>();
-// Alchemy Free Tier Limit: 10 blocks
+// Alchemy Free Tier Limit: 10 blocks for Base Sepolia address-only scans
 const BACKFILL_CHUNK = 10n;
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 5, delayMs = 2000): Promise<T> {
@@ -150,8 +150,8 @@ async function main() {
         totalLogs += logs.length;
         cursor = toChunk + 1n;
         
-        // Rate limit protection: Sleep 500ms between chunks
-        await new Promise(r => setTimeout(r, 500));
+        // Rate limit protection: Sleep 1s between chunks
+        await new Promise(r => setTimeout(r, 1000));
       } catch (err: any) {
         if (err.message.includes('429')) {
           logger.warn('Rate limited by RPC. Sleeping for 5 seconds...');
@@ -267,7 +267,13 @@ async function processLog(log: any) {
   } else if (eventName === 'RoundResolved') {
     if (args.winner === 1) await supabase.rpc('increment_wins_a', { m_id: mId });
     else if (args.winner === 2) await supabase.rpc('increment_wins_b', { m_id: mId });
-    await supabase.from('rounds').update({ winner: args.winner }).match({ match_id: mId, round_number: args.roundNumber });
+    
+    if (args.winner === 0) {
+      logger.info({ matchId: mId, round: args.roundNumber }, 'Sudden Death detected, clearing round data for replay');
+      await supabase.from('rounds').delete().match({ match_id: mId, round_number: args.roundNumber });
+    } else {
+      await supabase.from('rounds').update({ winner: args.winner }).match({ match_id: mId, round_number: args.roundNumber });
+    }
   } else if (eventName === 'MatchSettled') {
     const winnerLower = args.winner.toLowerCase();
     const isVoid = winnerLower === '0x0000000000000000000000000000000000000000' && args.payout === 0n;

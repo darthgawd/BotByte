@@ -17,7 +17,7 @@ const REQUIRED_KEYS = [
 ];
 
 async function validate() {
-  console.log('🔍 Running BotByte Pre-Flight Check...');
+  console.log('🔍 Running Falken Pre-Flight Check...');
   
   const missing = REQUIRED_KEYS.filter(key => !process.env[key]);
   if (missing.length > 0) {

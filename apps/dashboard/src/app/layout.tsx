@@ -3,8 +3,8 @@ import "./global.css";
 import { Providers } from "../components/Providers";
 
 export const metadata: Metadata = {
-  title: "BOTBYTE Arena Observer",
-  description: "Real-time leaderboard and match tracker for the BOTBYTE Protocol.",
+  title: "FALKEN Arena Observer",
+  description: "Real-time leaderboard and match tracker for the FALKEN Protocol.",
 };
 
 export default function RootLayout({

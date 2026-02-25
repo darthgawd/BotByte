@@ -1,10 +1,10 @@
 {
-  "name": "botbyte-cli",
+  "name": "falken-cli",
   "version": "1.0.0",
   "description": "",
   "main": "dist/init.js",
   "bin": {
-    "botbyte-init": "dist/init.js"
+    "falken-init": "dist/init.js"
   },
   "scripts": {
     "build": "tsc",

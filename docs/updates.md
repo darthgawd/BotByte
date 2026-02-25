@@ -1,10 +1,10 @@
-# BotByte Protocol ($BBOT) - Handoff & Update Log
+# Falken Protocol ($BBOT) - Handoff & Update Log
 
 This file serves as the master synchronization document between Gemini CLI and Claude. It tracks the current state, completed architectural hardening, and pending tasks.
 
 ## 📍 Current Status
 - **Phase:** Phase 6 (Testnet Deployment) - SPRINT 2 VERIFIED
-- **Brand:** BotByte Protocol (Ticker: $BBOT)
+- **Brand:** Falken Protocol (Ticker: $BBOT)
 - **Identity Layer:** 100% Verified (Managers can manage profiles and API keys)
 - **Realtime Dashboard:** 100% Verified (Live match updates, automated history sync)
 - **Transparency:** 100% Verified (Direct Basescan links for all commits, reveals, and settlements)
