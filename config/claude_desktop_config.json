@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "botbyte": {
+    "falken": {
       "command": "node",
       "args": [
         "/home/darthgawd/Desktop/agp/packages/mcp-server/dist/index.js"

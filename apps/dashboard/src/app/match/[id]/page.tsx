@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, use } from 'react';
+import React, { useEffect, useState, useRef, use } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Navbar } from '@/components/Navbar';
 import { ChevronLeft, Swords, Shield, Trophy, Hash, Clock, Copy, CheckCircle2, ExternalLink } from 'lucide-react';
@@ -61,24 +61,32 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
   const [nicknames, setNicknames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
+  const fetchSeq = useRef(0);
 
   useEffect(() => {
     async function fetchData() {
+      // Stale-response guard: each call gets a sequence number.
+      // If a newer call was started before this one finishes, discard our results.
+      const seq = ++fetchSeq.current;
+
       const { data: matchData } = await supabase
         .from('matches')
         .select('*')
         .eq('match_id', matchId)
         .single();
-      
+
       const { data: roundsData } = await supabase
         .from('rounds')
         .select('*')
         .eq('match_id', matchId)
         .order('round_number', { ascending: true });
 
+      // Discard if a newer fetch was kicked off while we were awaiting
+      if (seq !== fetchSeq.current) return;
+
       if (matchData) {
         let playerB = matchData.player_b;
-        
+
         // SELF-HEALING: If player_b is null but we have rounds, find player B's address
         if (!playerB && roundsData && roundsData.length > 0) {
             const playerBEntry = roundsData.find(r => r.player_address.toLowerCase() !== matchData.player_a.toLowerCase());
@@ -89,16 +97,19 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
         }
 
         setMatch(matchData);
-        
+
         // Fetch nicknames for both players
         const addresses = [matchData.player_a.toLowerCase()];
         if (playerB) addresses.push(playerB.toLowerCase());
-        
+
         const { data: profiles } = await supabase
           .from('agent_profiles')
           .select('address, nickname')
           .in('address', addresses);
-        
+
+        // Final stale check after nickname fetch
+        if (seq !== fetchSeq.current) return;
+
         const nameMap: Record<string, string> = {};
         profiles?.forEach(p => {
           if (p.nickname) nameMap[p.address.toLowerCase()] = p.nickname;
@@ -135,12 +146,15 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
   if (loading) return null;
   if (!match) return <div className="p-20 text-center text-white">Match not found</div>;
 
-  const groupedRounds = rounds.reduce((acc, r) => {
+  const groupedRounds = (rounds || []).reduce((acc, r) => {
+    if (!r || typeof r.round_number !== 'number') return acc;
     if (!acc[r.round_number]) acc[r.round_number] = { round: r.round_number, a: null, b: null, winner: r.winner };
     if (r.player_index === 1) acc[r.round_number].a = r;
-    else acc[r.round_number].b = r;
+    else if (r.player_index === 2) acc[r.round_number].b = r;
     return acc;
   }, {} as Record<number, { round: number, a: Round | null, b: Round | null, winner: number }>);
+
+  const sortedRounds = Object.values(groupedRounds).sort((a, b) => b.round - a.round);
 
   return (
     <main className="min-h-screen bg-black text-zinc-400 font-sans pb-20">
@@ -256,7 +270,7 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
           </h2>
           
           <div className="space-y-3">
-            {Object.values(groupedRounds).reverse().map((round) => (
+            {sortedRounds.map((round) => (
               <div key={round.round} className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden">
                 <div className="bg-zinc-900 px-6 py-3 border-b border-zinc-800 flex justify-between items-center">
                   <span className="text-xs font-black text-white">ROUND {round.round}</span>
@@ -270,9 +284,18 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
                   <div className="p-6 space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-bold text-zinc-600 uppercase">Player A</span>
-                      {round.a?.revealed ? (
+                      {round.a?.revealed && round.a?.move != null ? (
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-blue-400">{MOVE_LABELS[round.a.move]}</span>
+                          {round.a.reveal_tx_hash && (
+                            <a href={`https://sepolia.basescan.org/tx/${round.a.reveal_tx_hash}`} target="_blank" rel="noopener noreferrer" title="Reveal Transaction">
+                              <ExternalLink className="w-3 h-3 text-zinc-700 hover:text-zinc-400" />
+                            </a>
+                          )}
+                        </div>
+                      ) : round.a?.revealed ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-yellow-500 px-2 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded animate-pulse">REVEALED</span>
                           {round.a.reveal_tx_hash && (
                             <a href={`https://sepolia.basescan.org/tx/${round.a.reveal_tx_hash}`} target="_blank" rel="noopener noreferrer" title="Reveal Transaction">
                               <ExternalLink className="w-3 h-3 text-zinc-700 hover:text-zinc-400" />
@@ -309,9 +332,18 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
                   <div className="p-6 space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-bold text-zinc-600 uppercase">Player B</span>
-                      {round.b?.revealed ? (
+                      {round.b?.revealed && round.b?.move != null ? (
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-purple-400">{MOVE_LABELS[round.b.move]}</span>
+                          {round.b.reveal_tx_hash && (
+                            <a href={`https://sepolia.basescan.org/tx/${round.b.reveal_tx_hash}`} target="_blank" rel="noopener noreferrer" title="Reveal Transaction">
+                              <ExternalLink className="w-3 h-3 text-zinc-700 hover:text-zinc-400" />
+                            </a>
+                          )}
+                        </div>
+                      ) : round.b?.revealed ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-yellow-500 px-2 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded animate-pulse">REVEALED</span>
                           {round.b.reveal_tx_hash && (
                             <a href={`https://sepolia.basescan.org/tx/${round.b.reveal_tx_hash}`} target="_blank" rel="noopener noreferrer" title="Reveal Transaction">
                               <ExternalLink className="w-3 h-3 text-zinc-700 hover:text-zinc-400" />

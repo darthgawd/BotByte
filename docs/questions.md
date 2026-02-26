@@ -128,3 +128,58 @@ The contract name in `contracts/script/Deploy.s.sol` (`DeployBASEBIT`) did not m
 3.  **Folder Renaming:** Renamed `packages/basebit-cli` to `packages/falken-cli` and updated the workspace configuration.
 4.  **Cleanup:** Removed stale compiled JS files from the MCP server source directory and verified the build.
 5.  **Validation:** Ran the full Foundry test suite (64/64 PASS) to ensure no logic was broken during the renaming process.
+
+### Question: Why did we rename the project to Falken Protocol?
+### Answer:
+The name "Falken" reflects a more sophisticated, high-tech, and strategic brand identity. It moves away from the generic "BotByte" name toward an aesthetic of "Intercepting" patterns and "High-Fidelity" intelligence. 
+
+**Changes Applied:**
+1.  **Global Rebrand:** Every instance of "BotByte" was replaced with "Falken Protocol" across the smart contracts, dashboard, documentation, and folder structures.
+2.  **Secure Hash Update:** The cryptographic commit-reveal formula now uses the `FALKEN_V1` domain separator to prevent replay attacks across chains.
+3.  **New Logo Identity:** Designed three geometric SVG logo concepts (The Interceptor, The Sigil, The Blade) to match the new brand.
+
+### Question: Why modularize the pricing logic into PriceProvider.sol?
+### Answer:
+In the original design, the Chainlink price feed was hardcoded into the main `MatchEscrow` contract. This created a high risk for future updates.
+
+**Benefits of the Modular Refactor:**
+1.  **Future-Proofing:** If we want to change price sources (e.g., from Chainlink to Pyth) or change the minimum stake, we can now "Hot Swap" the `PriceProvider` contract without touching the core escrow logic or user funds.
+2.  **Security Hardening:** It separates the "Oracle Data" layer from the "Money" layer, reducing the surface area for complex bugs.
+3.  **Testing Flexibility:** Added a `manualPrice` override so that on testnets (like Base Sepolia), we can set a manual price if the Chainlink feed is restricted or lagging, ensuring Joshua never stops playing.
+
+### Question: How can I prevent Joshua from creating too many matches at once?
+### Answer:
+The House Bot's liquidity logic was updated to be more conservative.
+
+**The Fix:**
+I modified `HouseBot.ts` to track both `OPEN` matches (waiting for an opponent) and `ACTIVE` matches (currently being played).
+- Joshua now checks the total count of his participation across all recent matches.
+- If he has **any** open match OR **any** active match, he will skip the liquidity creation step.
+- This strictly limits him to **one game at a time**, ensuring he doesn't flood the arena or deplete his funds too quickly.
+
+### Question: Can I lower the minimum stake for testing without redeploying contracts?
+### Answer:
+Yes. Because of the modular **PriceProvider** architecture, the minimum stake can be updated on-the-fly by the contract owner.
+
+**Action Taken:**
+I executed a transaction to call `setMinStakeUsd` on the `PriceProvider` contract, lowering the minimum from **$2.00** to **$0.05**.
+- This allows the bots to create matches with much smaller amounts of ETH.
+- It is ideal for long-running tests or scenarios where the testnet faucet is being stingy.
+
+### Question: How do I void all running matches?
+### Answer:
+If the arena gets stuck or you need to clear the match history for a fresh start, I have provided an administrative script to void all matches that are currently in the `OPEN` or `ACTIVE` state.
+
+**Procedure:**
+1.  **Execute the Script:**
+    ```bash
+    node scripts/admin-void-all.js
+    ```
+2.  **What it does:**
+    - Fetches all matches from Supabase with a status of `OPEN` or `ACTIVE`.
+    - Calls the `adminVoidMatch` function on the `MatchEscrow` contract for each match ID.
+    - Updates the match status to `VOIDED` on-chain, which allows participants to withdraw their original stakes.
+    - The Indexer will automatically detect these on-chain changes and update the Supabase database.
+
+**Security:**
+This script requires the `PRIVATE_KEY` in your `.env` file to be the **Owner** of the `MatchEscrow` contract.

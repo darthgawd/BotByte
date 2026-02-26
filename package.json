@@ -36,5 +36,8 @@
     "tsx": "^4.21.0",
     "turbo": "^2.8.10",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.97.0"
   }
 }

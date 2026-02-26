@@ -15,7 +15,13 @@ salts.json
 # DS Store
 .DS_Store
 
+# Python
+venv_wake/
+__pycache__/
+*.pyc
+
 # Foundry
 out
 cache
 broadcast
+packages/falken-hype

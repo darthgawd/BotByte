@@ -620,6 +620,16 @@ contract MatchEscrowTest is Test {
         assertEq(playerA.balance, balBeforeA + payout);
     }
 
+    function testManualPriceOverride() public {
+        priceProvider.setManualPrice(4000 * 1e8); // $4000 override
+        
+        // Even if feed is stale, it should work
+        mockPriceFeed.updateRoundData(1, 1000 * 1e8, block.timestamp - 50 hours, block.timestamp - 50 hours);
+        
+        uint256 eth = priceProvider.getEthAmount(4000 * 1e18); // $4000
+        assertEq(eth, 1 ether);
+    }
+
     function testPriceProviderMinStake() public {
         vm.prank(address(this)); // Owner
         vm.expectEmit(true, false, false, true);
@@ -640,6 +650,9 @@ contract MatchEscrowTest is Test {
     }
 
     function test_RevertIf_PriceStale() public {
+        // Ensure manualPrice is 0 to use feed
+        priceProvider.setManualPrice(0);
+        
         // Set updatedAt to 25 hours ago
         mockPriceFeed.updateRoundData(1, 3000 * 1e8, block.timestamp - 25 hours, block.timestamp - 25 hours);
         

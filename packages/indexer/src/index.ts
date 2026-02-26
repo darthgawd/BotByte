@@ -24,17 +24,30 @@ const ESCROW_ABI = [
   { name: 'MatchCreated', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'playerA', type: 'address', indexed: true }, { name: 'stake', type: 'uint256', indexed: false }, { name: 'gameLogic', type: 'address', indexed: false }] },
   { name: 'MatchJoined', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'playerB', type: 'address', indexed: true }] },
   { name: 'RoundStarted', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'roundNumber', type: 'uint8', indexed: false }] },
-  { name: 'MoveCommitted', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'roundNumber', type: 'uint8', indexed: false }, { name: 'player', type: 'address', indexed: true }] },
+  { name: 'MoveCommitted', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'roundNumber', type: 'uint8', indexed: false }, { name: 'player', type: 'address', indexed: true }, { name: 'commitHash', type: 'bytes32', indexed: false }] },
   { name: 'MoveRevealed', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'roundNumber', type: 'uint8', indexed: false }, { name: 'player', type: 'address', indexed: true }, { name: 'move', type: 'uint8', indexed: false }] },
   { name: 'RoundResolved', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'roundNumber', type: 'uint8', indexed: false }, { name: 'winner', type: 'uint8', indexed: false }] },
   { name: 'MatchSettled', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'winner', type: 'address', indexed: true }, { name: 'payout', type: 'uint256', indexed: false }] },
   { name: 'TimeoutClaimed', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'roundNumber', type: 'uint8', indexed: false }, { name: 'claimer', type: 'address', indexed: true }] },
   { name: 'WithdrawalQueued', type: 'event', inputs: [{ name: 'recipient', type: 'address', indexed: true }, { name: 'amount', type: 'uint256', indexed: false }] },
   { name: 'GameLogicApproved', type: 'event', inputs: [{ name: 'logic', type: 'address', indexed: true }, { name: 'approved', type: 'bool', indexed: false }] },
+  { name: 'getMatch', type: 'function', stateMutability: 'view', inputs: [{ name: '_matchId', type: 'uint256' }], outputs: [{ name: '', type: 'tuple', components: [
+    { name: 'playerA', type: 'address' },
+    { name: 'playerB', type: 'address' },
+    { name: 'stake', type: 'uint256' },
+    { name: 'gameLogic', type: 'address' },
+    { name: 'winsA', type: 'uint8' },
+    { name: 'winsB', type: 'uint8' },
+    { name: 'currentRound', type: 'uint8' },
+    { name: 'drawCounter', type: 'uint8' },
+    { name: 'phase', type: 'uint8' },
+    { name: 'status', type: 'uint8' },
+    { name: 'commitDeadline', type: 'uint256' },
+    { name: 'revealDeadline', type: 'uint256' }
+  ] }] },
 ];
 
 const processedLogIds = new Set<string>();
-// Alchemy Free Tier Limit: 10 blocks for Base Sepolia address-only scans
 const BACKFILL_CHUNK = 10n;
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 5, delayMs = 2000): Promise<T> {
@@ -58,6 +71,27 @@ async function getBlockTimestamp(blockNumber: bigint): Promise<number> {
   return Number(block.timestamp);
 }
 
+async function syncMatchScore(dbMId: string) {
+  try {
+    const { data: rounds } = await supabase
+      .from('rounds')
+      .select('round_number, winner')
+      .eq('match_id', dbMId)
+      .eq('player_index', 1)
+      .not('winner', 'is', null);
+
+    if (rounds) {
+      const winsA = rounds.filter((r: any) => r.winner === 1).length;
+      const winsB = rounds.filter((r: any) => r.winner === 2).length;
+
+      logger.info({ dbMId, winsA, winsB, roundsCounted: rounds.length }, 'Syncing match score from rounds history (player_index=1 only)');
+      await supabase.from('matches').update({ wins_a: winsA, wins_b: winsB }).eq('match_id', dbMId);
+    }
+  } catch (err) {
+    logger.error({ dbMId, err }, 'Failed to sync match score');
+  }
+}
+
 async function ensureMatchExists(mId: string, onChainId: bigint) {
   const { data: existing } = await supabase.from('matches').select('match_id').eq('match_id', mId).single();
   if (existing) return;
@@ -72,7 +106,6 @@ async function ensureMatchExists(mId: string, onChainId: bigint) {
       args: [onChainId]
     }) as any;
 
-    // Map on-chain status/phase indices to strings
     const statusMap = ['OPEN', 'ACTIVE', 'SETTLED', 'VOIDED'];
     const phaseMap = ['COMMIT', 'REVEAL'];
 
@@ -87,43 +120,27 @@ async function ensureMatchExists(mId: string, onChainId: bigint) {
       current_round: matchData.currentRound,
       status: statusMap[matchData.status] || 'OPEN',
       phase: phaseMap[matchData.phase] || 'COMMIT',
-      created_at: new Date().toISOString() // Fallback since we don't have block TS here
+      created_at: new Date().toISOString()
     });
-    logger.info({ matchId: mId }, 'Successfully backfilled missing match from chain');
   } catch (err: any) {
     logger.error({ matchId: mId, err: err.message }, 'Failed to fetch missing match from chain');
   }
 }
 
 async function main() {
-  logger.info({ 
-    escrow: process.env.ESCROW_ADDRESS, 
-    supabase: process.env.SUPABASE_URL 
-  }, 'Indexer environment check');
-
-  if (!ESCROW_ADDRESS || ESCROW_ADDRESS.includes('tbd')) {
-    logger.error('❌ ESCROW_ADDRESS is missing or still set to TBD. You MUST deploy the contracts first using pnpm contracts:deploy.');
-    process.exit(1);
-  }
-
   const { data: syncState } = await supabase.from('sync_state').select('last_processed_block').eq('id', 'indexer_main').single();
-  
   const startBlockEnv = process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : 0n;
   const fromBlock = BigInt(syncState?.last_processed_block || startBlockEnv);
   const currentBlock = await publicClient.getBlockNumber();
   
-  logger.info({ chain: baseSepolia.name, fromBlock, currentBlock, escrow: ESCROW_ADDRESS }, 'Indexer starting...');
+  logger.info({ fromBlock, currentBlock }, 'Indexer starting...');
 
   const handleLogs = async (logs: any[]) => {
     const parsedLogs = parseEventLogs({ abi: ESCROW_ABI, logs });
     let lastBlock = 0n;
     for (const log of parsedLogs) {
       const logId = `${log.blockHash}-${log.logIndex}`;
-      if (log.removed) { 
-        await handleReorg(log); 
-        processedLogIds.delete(logId); 
-        continue; 
-      }
+      if (log.removed) continue;
       if (processedLogIds.has(logId)) continue;
       await processLog(log);
       processedLogIds.add(logId);
@@ -135,149 +152,147 @@ async function main() {
   };
 
   if (currentBlock > fromBlock) {
-    logger.info(`Catching up: ${fromBlock} -> ${currentBlock}`);
-    let totalLogs = 0;
     let cursor = fromBlock + 1n;
     while (cursor <= currentBlock) {
       const toChunk = cursor + BACKFILL_CHUNK - 1n < currentBlock ? cursor + BACKFILL_CHUNK - 1n : currentBlock;
-      try {
-        const logs = await withRetry(() => publicClient.getLogs({ 
-          address: ESCROW_ADDRESS as `0x${string}`, 
-          fromBlock: cursor, 
-          toBlock: toChunk 
-        })) as any[];
-        await handleLogs(logs);
-        totalLogs += logs.length;
-        cursor = toChunk + 1n;
-        
-        // Rate limit protection: Sleep 1s between chunks
-        await new Promise(r => setTimeout(r, 1000));
-      } catch (err: any) {
-        if (err.message.includes('429')) {
-          logger.warn('Rate limited by RPC. Sleeping for 5 seconds...');
-          await new Promise(r => setTimeout(r, 5000));
-          continue; // Try same chunk
-        }
-        logger.error({ from: cursor, to: toChunk, err: err.message }, 'Failed to fetch logs, skipping chunk');
-        cursor = toChunk + 1n;
-      }
+      const logs = await withRetry(() => publicClient.getLogs({ address: ESCROW_ADDRESS as `0x${string}`, fromBlock: cursor, toBlock: toChunk }));
+      await handleLogs(logs);
+      cursor = toChunk + 1n;
+      await new Promise(r => setTimeout(r, 500));
     }
-    logger.info({ totalLogs }, 'Backfill complete.');
   }
 
   publicClient.watchEvent({ address: ESCROW_ADDRESS as `0x${string}`, onLogs: handleLogs });
-  logger.info('Listening for new events...');
-}
-
-async function handleReorg(log: any) {
-  const { eventName, args } = log;
-  const mId = getDbMatchId(args.matchId);
-  logger.warn({ eventName, matchId: mId }, '[REORG] Reverting event');
-
-  if (eventName === 'MatchCreated') {
-    await supabase.from('matches').delete().eq('match_id', mId);
-  } else if (eventName === 'MatchJoined') {
-    await supabase.from('matches').update({ player_b: null, status: 'OPEN' }).eq('match_id', mId);
-  } else if (eventName === 'MoveCommitted') {
-    await supabase.from('rounds').delete().match({ match_id: mId, round_number: args.roundNumber, player_address: args.player.toLowerCase() });
-    await supabase.from('matches').update({ phase: 'COMMIT' }).eq('match_id', mId);
-  } else if (eventName === 'MoveRevealed') {
-    await supabase.from('rounds').update({ revealed: false, move: null }).match({ match_id: mId, round_number: args.roundNumber, player_address: args.player.toLowerCase() });
-  } else if (eventName === 'RoundResolved') {
-    const { winner } = args;
-    if (winner === 1) await supabase.rpc('decrement_wins_a', { m_id: mId });
-    else if (winner === 2) await supabase.rpc('decrement_wins_b', { m_id: mId });
-    await supabase.from('rounds').update({ winner: null }).match({ match_id: mId, round_number: args.roundNumber });
-  } else if (eventName === 'MatchSettled') {
-    await supabase.from('matches').update({ status: 'ACTIVE', winner: null, payout_wei: null }).eq('match_id', mId);
-  }
 }
 
 async function processLog(log: any) {
   const { eventName, args, blockNumber } = log;
   const mId = args.matchId ? getDbMatchId(args.matchId) : null;
 
-  logger.info({ eventName, matchId: mId, blockNumber }, 'Processing event');
-
-  // Ensure parent match exists for all match-related events
   if (mId && eventName !== 'MatchCreated') {
     await ensureMatchExists(mId, BigInt(args.matchId));
   }
 
   if (eventName === 'MatchCreated') {
-    const playerA = args.playerA.toLowerCase();
-    await supabase.from('matches').upsert({ match_id: mId, player_a: playerA, stake_wei: args.stake.toString(), game_logic: args.gameLogic.toLowerCase(), status: 'OPEN', phase: 'COMMIT', current_round: 1 });
-    await supabase.from('agent_profiles').upsert({ address: playerA, last_active: new Date().toISOString() }, { onConflict: 'address' });
+    await supabase.from('matches').upsert({ 
+      match_id: mId, 
+      player_a: args.playerA.toLowerCase(), 
+      stake_wei: args.stake.toString(), 
+      game_logic: args.gameLogic.toLowerCase(), 
+      status: 'OPEN', 
+      phase: 'COMMIT', 
+      current_round: 1,
+      wins_a: 0,
+      wins_b: 0
+    });
   } else if (eventName === 'MatchJoined') {
     const ts = await getBlockTimestamp(blockNumber);
-    const playerB = args.playerB.toLowerCase();
-    logger.info({ matchId: mId, playerB, status: 'ACTIVE' }, 'UPDATING MATCH TO ACTIVE');
-    const { error } = await supabase.from('matches').update({ 
-      player_b: playerB, 
+    await supabase.from('matches').update({ 
+      player_b: args.playerB.toLowerCase(), 
       status: 'ACTIVE', 
       commit_deadline: new Date((ts + 3600) * 1000).toISOString() 
     }).eq('match_id', mId);
-    if (error) logger.error({ mId, error }, 'Failed to update MatchJoined in Supabase');
-    await supabase.from('agent_profiles').upsert({ address: playerB, last_active: new Date().toISOString() }, { onConflict: 'address' });
   } else if (eventName === 'RoundStarted') {
     const ts = await getBlockTimestamp(blockNumber);
-    logger.info({ matchId: mId, round: args.roundNumber }, 'UPDATING MATCH ROUND AND PHASE');
-    const { error } = await supabase.from('matches').update({ 
+    await supabase.from('matches').update({ 
       current_round: args.roundNumber, 
       phase: 'COMMIT', 
       commit_deadline: new Date((ts + 3600) * 1000).toISOString() 
     }).eq('match_id', mId);
-    if (error) logger.error({ mId, error }, 'Failed to update RoundStarted in Supabase');
+    // Cleanup ONLY for sudden death replays (draw → same round re-played).
+    // Only delete if existing entries for this round have winner=0 (draw).
+    // This guard prevents accidental deletion of resolved round data.
+    const { data: existingRound } = await supabase.from('rounds')
+      .select('winner')
+      .match({ match_id: mId, round_number: args.roundNumber })
+      .limit(1);
+    if (existingRound && existingRound.length > 0 && existingRound[0].winner === 0) {
+      logger.info({ matchId: mId, round: args.roundNumber }, 'Sudden death: clearing draw round for replay');
+      await supabase.from('rounds').delete().match({ match_id: mId, round_number: args.roundNumber });
+    }
   } else if (eventName === 'MoveCommitted') {
     const { data: match } = await supabase.from('matches').select('player_a').eq('match_id', mId).single();
     const playerLower = args.player.toLowerCase();
     const pIndex = playerLower === match?.player_a ? 1 : 2;
-    const { error: rError } = await supabase.from('rounds').upsert({ 
+    await supabase.from('rounds').upsert({ 
       match_id: mId, 
       round_number: args.roundNumber, 
       player_address: playerLower, 
       player_index: pIndex, 
+      commit_hash: args.commitHash,
       revealed: false,
       commit_tx_hash: log.transactionHash 
-    });
-    if (rError) logger.error({ mId, playerLower, rError }, 'Failed to upsert Round MoveCommitted');
+    }, { onConflict: 'match_id,round_number,player_address' });
 
     const { data: roundEntries } = await supabase.from('rounds').select('player_address').match({ match_id: mId, round_number: args.roundNumber });
     if (roundEntries && roundEntries.length === 2) {
       const ts = await getBlockTimestamp(blockNumber);
-      logger.info({ matchId: mId, phase: 'REVEAL' }, 'TRANSITIONING TO REVEAL PHASE');
-      const { error: mError } = await supabase.from('matches').update({ phase: 'REVEAL', reveal_deadline: new Date((ts + 3600) * 1000).toISOString() }).eq('match_id', mId);
-      if (mError) logger.error({ mId, mError }, 'Failed to transition to REVEAL phase');
+      await supabase.from('matches').update({ phase: 'REVEAL', reveal_deadline: new Date((ts + 3600) * 1000).toISOString() }).eq('match_id', mId);
     }
   } else if (eventName === 'MoveRevealed') {
     const { data: match } = await supabase.from('matches').select('player_a').eq('match_id', mId).single();
     const playerLower = args.player.toLowerCase();
     const pIndex = playerLower === match?.player_a ? 1 : 2;
-    
-    const { error: rvError } = await supabase.from('rounds').upsert({ 
-      match_id: mId, 
-      round_number: args.roundNumber, 
-      player_address: playerLower, 
-      player_index: pIndex,
-      move: args.move, 
+
+    // Step 1: Write to hidden_move (NOT move). Use .update() to avoid nuking commit_hash.
+    const { data: updated } = await supabase.from('rounds').update({
+      hidden_move: args.move,
       revealed: true,
       reveal_tx_hash: log.transactionHash
-    });
-    if (rvError) logger.error({ mId, rvError }, 'Failed to upsert Round MoveRevealed');
-  } else if (eventName === 'RoundResolved') {
-    if (args.winner === 1) await supabase.rpc('increment_wins_a', { m_id: mId });
-    else if (args.winner === 2) await supabase.rpc('increment_wins_b', { m_id: mId });
-    
-    if (args.winner === 0) {
-      logger.info({ matchId: mId, round: args.roundNumber }, 'Sudden Death detected, clearing round data for replay');
-      await supabase.from('rounds').delete().match({ match_id: mId, round_number: args.roundNumber });
-    } else {
-      await supabase.from('rounds').update({ winner: args.winner }).match({ match_id: mId, round_number: args.roundNumber });
+    }).match({ match_id: mId, round_number: args.roundNumber, player_address: playerLower }).select();
+
+    // Fallback: if update hit 0 rows (missed MoveCommitted), insert the row
+    if (!updated || updated.length === 0) {
+      logger.warn({ matchId: mId, round: args.roundNumber, player: playerLower }, 'MoveRevealed: row missing, inserting');
+      await supabase.from('rounds').upsert({
+        match_id: mId,
+        round_number: args.roundNumber,
+        player_address: playerLower,
+        player_index: pIndex,
+        hidden_move: args.move,
+        revealed: true,
+        reveal_tx_hash: log.transactionHash
+      }, { onConflict: 'match_id,round_number,player_address' });
     }
+
+    // Step 2: Dual-Reveal Gate — check if BOTH players have now revealed for this round
+    const { data: revealedRows } = await supabase.from('rounds')
+      .select('player_address, hidden_move')
+      .match({ match_id: mId, round_number: args.roundNumber, revealed: true })
+      .not('hidden_move', 'is', null);
+
+    if (revealedRows && revealedRows.length >= 2) {
+      // Both revealed! Unmask hidden_move → move for BOTH players simultaneously
+      for (const row of revealedRows) {
+        await supabase.from('rounds').update({ move: row.hidden_move })
+          .match({ match_id: mId, round_number: args.roundNumber, player_address: row.player_address });
+      }
+      logger.info({ matchId: mId, round: args.roundNumber }, '🎭 Both moves unmasked simultaneously');
+    }
+  } else if (eventName === 'RoundResolved') {
+    // Safety net: ensure any hidden_move values are copied to move before resolving
+    const { data: hiddenRows } = await supabase.from('rounds')
+      .select('player_address, hidden_move, move')
+      .match({ match_id: mId, round_number: args.roundNumber })
+      .not('hidden_move', 'is', null);
+
+    if (hiddenRows) {
+      for (const row of hiddenRows) {
+        if (row.move === null || row.move === undefined) {
+          await supabase.from('rounds').update({ move: row.hidden_move })
+            .match({ match_id: mId, round_number: args.roundNumber, player_address: row.player_address });
+        }
+      }
+    }
+
+    // Update the winner
+    await supabase.from('rounds').update({ winner: args.winner }).match({ match_id: mId, round_number: args.roundNumber });
+
+    // Robust Win Count Fix
+    await syncMatchScore(mId!);
   } else if (eventName === 'MatchSettled') {
     const winnerLower = args.winner.toLowerCase();
     const isVoid = winnerLower === '0x0000000000000000000000000000000000000000' && args.payout === 0n;
-    const isTie = winnerLower === '0x0000000000000000000000000000000000000000' && args.payout > 0n;
     await supabase.from('matches').update({ 
       status: isVoid ? 'VOIDED' : 'SETTLED', 
       winner: winnerLower, 
@@ -285,15 +300,6 @@ async function processLog(log: any) {
       phase: 'COMPLETE',
       settle_tx_hash: log.transactionHash
     }).eq('match_id', mId);
-    if (!isVoid) {
-      const { data: m } = await supabase.from('matches').select('player_a, player_b').eq('match_id', mId).single();
-      if (m && m.player_b) {
-        const winnerIndex = isTie ? 0 : (winnerLower === m.player_a ? 1 : 2);
-        await supabase.rpc('settle_match_elo', { p_player_a: m.player_a, p_player_b: m.player_b, p_winner_index: winnerIndex });
-      }
-    }
-  } else if (eventName === 'WithdrawalQueued') {
-    logger.info({ amount: args.amount.toString(), recipient: args.recipient }, 'Withdrawal queued');
   }
 }
 
