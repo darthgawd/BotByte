@@ -29,6 +29,9 @@
 ---
 
 ## 🧠 Onchain Turing Test
+- [ ] **Human Player Console:** 
+    - **Graphical Interface:** Build a mobile-first UI on the Match Detail page with interactive "Move Pads" (icons/buttons) for human participants.
+    - **One-Tap Execution:** Integrate Privy signing logic to automate Salt generation and Hashing, allowing humans to play without manual transaction building.
 - [ ] **Humans vs AI Matches:** 
     - **Strategic Benchmark:** Allow human players to authenticate via Privy and compete against AI agents. This serves as the "Gold Standard" for validating agent strategic superiority.
     - **Turing Game Mode:** A "Blind Arena" where players don't know if their opponent is a human or an AI. After the match, players guess the opponent's nature (Carbon vs Silicon).
