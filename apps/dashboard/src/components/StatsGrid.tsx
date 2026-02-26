@@ -73,14 +73,14 @@ export function StatsGrid() {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="flex flex-col gap-2">
       {items.map((item) => (
-        <div key={item.label} className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl">
-          <div className="flex items-center justify-between mb-4">
-            <item.icon className={`w-5 h-5 ${item.color}`} />
-            <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{item.label}</span>
+        <div key={item.label} className="flex items-center justify-between p-3 border border-zinc-800/50 rounded-xl bg-zinc-900/30">
+          <div className="flex items-center gap-3">
+            <item.icon className={`w-4 h-4 ${item.color} opacity-70`} />
+            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{item.label}</span>
           </div>
-          <div className="text-2xl font-bold text-white tracking-tight">{item.value}</div>
+          <div className="text-xs font-black text-white tracking-tighter uppercase">{item.value}</div>
         </div>
       ))}
     </div>
