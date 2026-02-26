@@ -64,47 +64,47 @@ export function Navbar() {
     <>
       {/* Global Processing Overlay - Fixed Full Screen */}
       {isProcessing && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-500">
+        <div className="fixed inset-0 bg-white/90 dark:bg-black/90 backdrop-blur-xl z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-500">
           <div className="flex flex-col items-center gap-6">
             <div className="relative flex items-center justify-center">
-              <FalconIcon className="w-20 h-20 text-blue-500/10 animate-pulse" color="currentColor" />
-              <Loader2 className="w-12 h-12 text-blue-500 animate-spin absolute" />
+              <FalconIcon className="w-20 h-20 text-blue-600 dark:text-blue-500 opacity-10 animate-pulse" color="currentColor" />
+              <Loader2 className="w-12 h-12 text-blue-600 dark:text-blue-500 animate-spin absolute" />
             </div>
             <div className="flex flex-col items-center gap-2">
-              <span className="text-xs font-black text-white uppercase tracking-[0.4em] italic ml-1 text-center">Synchronizing</span>
-              <div className="w-32 h-[1px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
+              <span className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-[0.4em] italic ml-1 text-center">Synchronizing</span>
+              <div className="w-32 h-[1px] bg-gradient-to-r from-transparent via-blue-600 dark:via-blue-500 to-transparent" />
             </div>
           </div>
         </div>
       )}
 
-      <nav className="border-b border-zinc-800 bg-black/50 backdrop-blur-md sticky top-0 z-50 h-16 text-zinc-400 font-sans text-xs">
+      <nav className="border-b border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-black/50 backdrop-blur-md sticky top-0 z-50 h-16 text-zinc-500 dark:text-zinc-400 font-sans text-xs transition-colors duration-500">
         <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between font-sans">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <FalconIcon className="w-8 h-8 text-blue-500 fill-blue-500/10" color="currentColor" />
+          <Link href="/" className="flex items-center gap-2 group transition-opacity">
+            <FalconIcon className="w-8 h-8 text-blue-600 dark:text-blue-500 fill-blue-600/10 dark:fill-blue-500/10 group-hover:text-gold group-hover:fill-gold/10 transition-colors duration-300" color="currentColor" />
             <div className="flex items-baseline gap-1.5">
-              <span className="font-bold text-xl tracking-tight text-white uppercase tracking-tighter leading-none">FALKEN</span>
-              <span className="font-black text-xs text-blue-500 uppercase tracking-[0.2em] italic leading-none">Protocol</span>
+              <span className="font-bold text-xl tracking-tight text-zinc-900 dark:text-white uppercase tracking-tighter leading-none group-hover:text-gold transition-colors duration-300">FALKEN</span>
+              <span className="font-black text-xs text-blue-600 dark:text-blue-500 uppercase tracking-[0.2em] italic leading-none">Protocol</span>
             </div>
           </Link>
 
-          <div className="flex items-center gap-6 text-zinc-500">
-            <Link href="/arena" className="text-xs font-bold hover:text-white transition-colors uppercase tracking-widest text-nowrap">
+          <div className="flex items-center gap-6 text-zinc-500 dark:text-zinc-500">
+            <Link href="/arena" className="text-xs font-bold hover:text-zinc-900 dark:hover:text-white transition-colors uppercase tracking-widest text-nowrap">
               Arena
             </Link>
-            <Link href="/onboarding" className="text-xs font-bold hover:text-white transition-colors uppercase tracking-widest text-nowrap">
+            <Link href="/onboarding" className="text-xs font-bold hover:text-zinc-900 dark:hover:text-white transition-colors uppercase tracking-widest text-nowrap">
               How to Play
             </Link>
             
-            <div className="hidden lg:flex flex-col text-right border-l border-zinc-800 pl-6">
-              <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-nowrap">Protocol Escrow</span>
+            <div className="hidden lg:flex flex-col text-right border-l border-zinc-200 dark:border-zinc-800 pl-6">
+              <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest text-nowrap">Protocol Escrow</span>
               <a 
                 href={`https://sepolia.basescan.org/address/${escrowAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs font-mono text-zinc-400 hover:text-blue-500 transition-colors"
+                className="text-xs font-mono text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-500 transition-colors"
               >
-                {escrowAddress.slice(0, 6)}...{escrowAddress.slice(-4)}
+                {displayEscrow}
               </a>
             </div>
 
@@ -112,15 +112,13 @@ export function Navbar() {
               <ThemeToggle />
               
               {!mounted || !ready ? (
-                <div className="w-32 h-10 bg-zinc-900 animate-pulse rounded-xl" />
+                <div className="w-32 h-10 bg-zinc-100 dark:bg-zinc-900 animate-pulse rounded-xl" />
               ) : !isLoggedIn ? (
                 <div key="logged-out" className="flex items-center gap-2">
-                  <Wallet>
-                    <ConnectWallet 
-                      disconnectedLabel="Base Sign-In"
-                      className="bg-gold hover:bg-gold/90 text-black text-xs font-black px-6 py-2.5 rounded-xl transition-all uppercase italic tracking-tighter shadow-lg shadow-gold/10"
-                    />
-                  </Wallet>
+                  <ConnectWallet 
+                    disconnectedLabel="Base Sign-In"
+                    className="bg-gold hover:bg-gold/90 text-black text-xs font-black px-6 py-2.5 rounded-xl transition-all uppercase italic tracking-tighter shadow-lg shadow-gold/10"
+                  />
 
                   <button 
                     onClick={handleLogin}
@@ -137,35 +135,35 @@ export function Navbar() {
                   <div className="relative">
                     <button 
                       onClick={() => setShowDropdown(!showDropdown)}
-                      className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all"
+                      className="flex items-center gap-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-900 dark:text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm dark:shadow-none"
                     >
-                      <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center">
-                        <User className="w-3.5 h-3.5 text-blue-500" />
+                      <div className="w-6 h-6 rounded-full bg-blue-600/10 dark:bg-blue-500/20 flex items-center justify-center">
+                        <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-500" />
                       </div>
                       <span className="font-mono">{displayAddress}</span>
-                      <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`w-4 h-4 text-zinc-400 dark:text-zinc-500 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
                     </button>
 
                     {showDropdown && (
                       <>
                         <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
-                        <div className="absolute right-0 mt-2 w-64 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl p-2 z-20 animate-in fade-in zoom-in-95 duration-200">
-                          <div className="px-4 pt-3 pb-2 border-b border-zinc-800/50 mb-1">
-                            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">Active Session</p>
-                            <p className="text-xs font-mono text-white truncate">{address}</p>
+                        <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-2 z-20 animate-in fade-in zoom-in-95 duration-200">
+                          <div className="px-4 pt-3 pb-2 border-b border-zinc-100 dark:border-zinc-800/50 mb-1">
+                            <p className="text-[10px] font-black text-zinc-400 dark:text-zinc-600 uppercase tracking-widest mb-1">Active Session</p>
+                            <p className="text-xs font-mono text-zinc-900 dark:text-white truncate">{address}</p>
                           </div>
                           <div className="space-y-1">
                             <Link 
                               href="/settings"
                               onClick={() => setShowDropdown(false)}
-                              className="flex items-center gap-3 w-full px-4 py-2 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors text-sm font-medium"
+                              className="flex items-center gap-3 w-full px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors text-sm font-medium"
                             >
                               <Settings className="w-4 h-4" />
                               Settings
                             </Link>
                             <button 
                               onClick={handleLogout}
-                              className="flex items-center gap-3 w-full px-4 py-2 hover:bg-red-500/10 rounded-lg text-zinc-500 hover:text-red-500 transition-colors text-sm font-medium text-left"
+                              className="flex items-center gap-3 w-full px-4 py-2 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg text-zinc-500 hover:text-red-600 dark:hover:text-red-500 transition-colors text-sm font-medium text-left"
                             >
                               <LogOut className="w-4 h-4" />
                               Sign Out

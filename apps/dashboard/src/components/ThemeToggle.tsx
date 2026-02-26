@@ -7,9 +7,8 @@ export function ThemeToggle() {
   const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
-    // Initial load from local storage or system preference
     const savedTheme = localStorage.getItem('theme');
-    const darkMode = savedTheme ? savedTheme === 'dark' : true;
+    const darkMode = savedTheme !== 'light'; // Default to dark if not explicitly 'light'
     setIsDark(darkMode);
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -21,6 +20,8 @@ export function ThemeToggle() {
   const toggleTheme = () => {
     const newMode = !isDark;
     setIsDark(newMode);
+    
+    // Immediate toggle for direct feedback
     if (newMode) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');
@@ -33,10 +34,10 @@ export function ThemeToggle() {
   return (
     <button 
       onClick={toggleTheme}
-      className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-all text-zinc-400 hover:text-white active:scale-95"
+      className="p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white active:scale-95 shadow-sm"
       title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
     >
-      {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4 text-blue-500" />}
+      {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4 text-blue-600" />}
     </button>
   );
 }

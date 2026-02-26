@@ -20,7 +20,7 @@ export function Providers({ children }: { children: ReactNode }) {
   }, []);
 
   if (!mounted) {
-    return <div className="min-h-screen bg-black" />; // Blank skeleton during hydration
+    return <div className="min-h-screen" />; // Blank skeleton during hydration
   }
 
   if (!appId || appId === 'insert-your-privy-app-id') {
