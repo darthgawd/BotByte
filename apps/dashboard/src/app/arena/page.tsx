@@ -22,16 +22,16 @@ export default function ArenaPage() {
       </div>
 
       {/* Beta Disclaimer Banner */}
-      <div className="flex-none px-4 py-2 bg-blue-600/5 dark:bg-blue-500/5 border border-blue-600/10 dark:border-blue-500/20 rounded-xl flex items-center justify-between transition-colors">
+      <div className="flex-none px-4 py-3 bg-emerald-600/5 dark:bg-emerald-500/5 border border-emerald-600/10 dark:border-emerald-500/20 rounded-xl flex items-center justify-between transition-colors">
         <div className="flex items-center gap-3">
           <div className="px-2 py-0.5 rounded bg-gold text-[9px] font-black text-black uppercase tracking-tighter italic">BETA_V0.0.1</div>
-          <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-widest">
+          <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-widest leading-none">
             Falken Protocol is currently in early beta. Smart contracts are on Base Sepolia. Use with testnet funds only.
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-          <span className="text-[9px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-[0.2em]">Live_Status: Optimizing</span>
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-[0.2em]">Live_Status: Optimizing</span>
         </div>
       </div>
 
@@ -39,32 +39,32 @@ export default function ArenaPage() {
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4">
         
         {/* Left Column: Intelligence Lens (Rankings) [3 Cols] */}
-        <div className="lg:col-span-3 border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-[#080808] rounded-xl flex flex-col min-h-0 shadow-sm dark:shadow-2xl overflow-hidden transition-colors">
-          <div className="flex-none px-4 py-3 bg-zinc-100/50 dark:bg-zinc-900/20 border-b border-zinc-200 dark:border-zinc-900 flex items-center justify-between">
+        <div className="lg:col-span-3 border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-[#05070a] rounded-xl flex flex-col min-h-0 shadow-sm dark:shadow-2xl overflow-hidden transition-colors">
+          <div className="flex-none px-4 py-4 bg-zinc-100/50 dark:bg-blue-900/10 border-b border-zinc-200 dark:border-zinc-900 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-500" />
-              <span className="text-[10px] font-mono font-black uppercase tracking-[0.3em] text-gold">Intelligence_Lens</span>
+              <span className="text-xs font-mono font-black uppercase tracking-[0.3em] text-blue-600 dark:text-gold">Intelligence_Lens</span>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar dark:bg-blue-600/10">
             <Leaderboard />
           </div>
         </div>
 
         {/* Center Column: The Primary Feed [6 Cols] */}
-        <div className="lg:col-span-6 border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-[#080808] rounded-xl flex flex-col min-h-0 shadow-sm dark:shadow-2xl overflow-hidden transition-colors">
-          <div className="flex-none px-4 py-3 bg-zinc-100/50 dark:bg-zinc-900/20 border-b border-zinc-200 dark:border-zinc-900 flex items-center justify-between">
+        <div className="lg:col-span-6 border border-blue-600/50 dark:border-blue-500/50 bg-white dark:bg-[#080808] rounded-xl flex flex-col min-h-0 shadow-sm dark:shadow-2xl overflow-hidden transition-colors">
+          <div className="flex-none px-4 py-4 bg-zinc-100/50 dark:bg-zinc-900/20 border-b border-blue-600/20 dark:border-blue-500/30 flex items-center justify-between">
             <div className="flex gap-6">
               <button 
                 onClick={() => setActiveTab('terminal')}
-                className={`flex items-center gap-3 text-[10px] font-mono font-black tracking-[0.3em] uppercase transition-all ${activeTab === 'terminal' ? 'text-gold underline underline-offset-4 decoration-blue-500/50' : 'text-zinc-400 dark:text-zinc-600 hover:text-gold'}`}
+                className={`flex items-center gap-3 text-xs font-mono font-black tracking-[0.3em] uppercase transition-all ${activeTab === 'terminal' ? 'text-blue-600 dark:text-gold underline underline-offset-4 decoration-blue-500/50' : 'text-zinc-400 dark:text-zinc-600 hover:text-blue-600 dark:hover:text-gold'}`}
               >
                 <TerminalIcon className={`w-4 h-4 ${activeTab === 'terminal' ? 'text-blue-600 dark:text-blue-500' : 'text-zinc-300 dark:text-zinc-700'}`} />
                 Intelligence_Terminal
               </button>
               <button 
                 onClick={() => setActiveTab('arena')}
-                className={`flex items-center gap-3 text-[10px] font-mono font-black tracking-[0.3em] uppercase transition-all ${activeTab === 'arena' ? 'text-gold underline underline-offset-4 decoration-blue-500/50' : 'text-zinc-400 dark:text-zinc-600 hover:text-gold'}`}
+                className={`flex items-center gap-3 text-xs font-mono font-black tracking-[0.3em] uppercase transition-all ${activeTab === 'arena' ? 'text-blue-600 dark:text-gold underline underline-offset-4 decoration-blue-500/50' : 'text-zinc-400 dark:text-zinc-600 hover:text-blue-600 dark:hover:text-gold'}`}
               >
                 <Swords className={`w-4 h-4 ${activeTab === 'arena' ? 'text-blue-600 dark:text-blue-500' : 'text-zinc-300 dark:text-zinc-700'}`} />
                 Engagement_Feed
@@ -95,11 +95,11 @@ export default function ArenaPage() {
           
           {/* Module: Network Telemetry */}
           <div className="flex-1 border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-[#080808] rounded-xl flex flex-col min-h-0 shadow-sm dark:shadow-2xl overflow-hidden transition-colors">
-            <div className="flex-none px-4 py-3 bg-zinc-100/50 dark:bg-zinc-900/20 border-b border-zinc-200 dark:border-zinc-900 flex items-center gap-3">
+            <div className="flex-none px-4 py-4 bg-zinc-100/50 dark:bg-zinc-900/20 border-b border-zinc-200 dark:border-zinc-900 flex items-center gap-3">
               <Activity className="w-4 h-4 text-blue-600 dark:text-blue-500" />
-              <span className="text-[10px] font-mono font-black uppercase tracking-[0.3em] text-gold">Global_Telemetry</span>
+              <span className="text-xs font-mono font-black uppercase tracking-[0.3em] text-blue-600 dark:text-gold">Global_Telemetry</span>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar dark:bg-blue-600/10">
               <StatsGrid />
               
               <div className="p-4 border border-zinc-200 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-900/10 rounded-xl space-y-4">

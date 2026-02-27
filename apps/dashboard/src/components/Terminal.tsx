@@ -3,7 +3,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { usePrivy } from '@privy-io/react-auth';
+import { useAccount } from 'wagmi';
 import { ChevronRight, Terminal as TerminalIcon, Loader2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface LogEntry {
   id: string;
@@ -13,7 +16,12 @@ interface LogEntry {
 }
 
 export function Terminal() {
-  const { user, authenticated } = usePrivy();
+  const { user, authenticated: privyAuthenticated } = usePrivy();
+  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
+  
+  const isAuthenticated = privyAuthenticated || wagmiConnected;
+  const activeAddress = wagmiAddress || user?.wallet?.address;
+
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -34,7 +42,6 @@ export function Terminal() {
     if (hasBooted.current) return;
     hasBooted.current = true;
 
-    // Initial welcome logs
     const bootSequence = [
       { msg: 'LOADING FALKEN_OS...', type: 'SYSTEM' as const },
       { msg: 'ESTABLISHING NEURAL_LINK...', type: 'SYSTEM' as const },
@@ -45,7 +52,6 @@ export function Terminal() {
       setTimeout(() => addLog(step.msg, step.type), i * 600);
     });
 
-    // Subscribe to new matches
     const matchChannel = supabase
       .channel('terminal-matches')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matches' }, (payload) => {
@@ -78,7 +84,7 @@ export function Terminal() {
     setInput('');
     addLog(cmd, 'COMMAND');
 
-    if (!authenticated) {
+    if (!isAuthenticated) {
       addLog('FAILURE: UNAUTHORIZED. PLEASE CONNECT WALLET.', 'ALERT');
       return;
     }
@@ -90,21 +96,15 @@ export function Terminal() {
 
     try {
       if (primary === '/help') {
-        addLog('AVAILABLE COMMANDS:', 'INFO');
-        addLog('  /SPAWN <NAME> <ARCHETYPE> <MODEL?> - Deploy a hosted agent', 'INFO');
-        addLog('    Models: GEMINI (default), GPT-4O-MINI, GPT-4O, CLAUDE-3.5', 'INFO');
-        addLog('  /STATUS - Check protocol synchronization', 'INFO');
-        addLog('  /CLEAR - Clear terminal history', 'INFO');
+        addLog('AVAILABLE COMMANDS:\n\n- **/SPAWN <NAME> <ARCHETYPE> <MODEL?>** - Deploy a hosted agent\n  - Models: GEMINI (default), GPT-4O-MINI, GPT-4O, CLAUDE-3.5\n- **/STATUS** - Check protocol synchronization\n- **/CLEAR** - Clear terminal history', 'INFO');
       } else if (primary === '/clear') {
         setLogs([]);
       } else if (primary === '/status') {
-        addLog('CORE: ONLINE', 'SYSTEM');
-        addLog('NETWORK: BASE_SEPOLIA (OPTIMAL)', 'SYSTEM');
-        addLog('LATENCY: 12ms', 'SYSTEM');
+        addLog('CORE: **ONLINE**\nNETWORK: **BASE_SEPOLIA** (OPTIMAL)\nLATENCY: **12ms**', 'SYSTEM');
       } else if (primary === '/spawn') {
         if (parts.length < 3) {
-          addLog('USAGE: /SPAWN <NAME> <ARCHETYPE> <MODEL?>', 'ALERT');
-          addLog('VALID ARCHETYPES: AGGRESSIVE, STRATEGIST, SNIPER', 'INFO');
+          addLog('USAGE: `/SPAWN <NAME> <ARCHETYPE> <MODEL?>`', 'ALERT');
+          addLog('VALID ARCHETYPES: **AGGRESSIVE**, **STRATEGIST**, **SNIPER**', 'INFO');
         } else {
           const nickname = parts[1];
           const archetype = parts[2].toUpperCase();
@@ -114,11 +114,11 @@ export function Terminal() {
           const validModels = ['GEMINI', 'GPT-4O-MINI', 'GPT-4O', 'CLAUDE-3.5'];
 
           if (!validArchetypes.includes(archetype)) {
-            addLog(`ERROR: UNKNOWN ARCHETYPE: ${archetype}`, 'ALERT');
+            addLog(`ERROR: UNKNOWN ARCHETYPE: **${archetype}**`, 'ALERT');
           } else if (!validModels.includes(llmTier)) {
-            addLog(`ERROR: UNKNOWN MODEL: ${llmTier}`, 'ALERT');
+            addLog(`ERROR: UNKNOWN MODEL: **${llmTier}**`, 'ALERT');
           } else {
-            addLog(`INITIATING SPAWN SEQUENCE FOR '${nickname}' [${archetype}]...`, 'SYSTEM');
+            addLog(`INITIATING SPAWN SEQUENCE FOR **${nickname}** [${archetype}]...`, 'SYSTEM');
             
             const response = await fetch('/api/spawn', {
               method: 'POST',
@@ -127,23 +127,22 @@ export function Terminal() {
                 nickname,
                 archetype,
                 llmTier,
-                managerAddress: user?.wallet?.address
+                managerAddress: activeAddress
               })
             });
 
             const result = await response.json();
 
             if (result.success) {
-              addLog(`SPAWN SUCCESS: ${result.nickname} IS LIVE.`, 'ACTION');
-              addLog(`AGENT_ADDRESS: ${result.agentAddress}`, 'INFO');
-              addLog(`SECURE_ENCLAVE: WALLET_ENCRYPTED_AND_STORED`, 'SYSTEM');
+              addLog(`SPAWN SUCCESS: **${result.nickname}** IS LIVE.`, 'ACTION');
+              addLog(`AGENT_ADDRESS: \`${result.agentAddress}\``, 'INFO');
+              addLog(`SECURE_ENCLAVE: **WALLET_ENCRYPTED_AND_STORED**`, 'SYSTEM');
             } else {
               addLog(`SPAWN FAILED: ${result.error}`, 'ALERT');
             }
           }
         }
       } else {
-        // NATURAL LANGUAGE PROCESSING
         addLog('COMMUNICATING_WITH_FALKEN_BRAIN...', 'SYSTEM');
         
         const response = await fetch('/api/terminal', {
@@ -151,8 +150,8 @@ export function Terminal() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             query: cmd,
-            managerAddress: user?.wallet?.address,
-            tier: 'GEMINI' // Default for terminal chat
+            managerAddress: activeAddress,
+            tier: 'GEMINI'
           })
         });
 
@@ -161,22 +160,21 @@ export function Terminal() {
         if (result.response) {
           addLog(result.response, 'INFO');
         } else {
-          addLog(`UNKNOWN_COMMAND: ${primary}`, 'ALERT');
+          addLog(`UNKNOWN_COMMAND: **${primary}**`, 'ALERT');
         }
       }
     } catch (err) {
-      addLog('CRITICAL_SYSTEM_ERROR: INTERNAL_FAULT', 'ALERT');
+      addLog('CRITICAL_SYSTEM_ERROR: **INTERNAL_FAULT**', 'ALERT');
     } finally {
       setIsProcessing(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-[#050505] font-mono text-sm border border-blue-500/20 rounded-lg overflow-hidden transition-colors duration-500 shadow-[0_0_40px_rgba(59,130,246,0.05)]">
-      {/* Log Display */}
+    <div className="flex flex-col h-full bg-white dark:bg-[#050505] font-mono text-sm overflow-hidden transition-colors duration-500 shadow-[0_0_40px_rgba(59,130,246,0.05)]">
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-6 space-y-3 scrollbar-hide selection:bg-blue-500/20 dark:selection:bg-blue-500/30"
+        className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide selection:bg-blue-500/20 dark:selection:bg-blue-500/30"
       >
         {logs.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-zinc-300 dark:text-zinc-800 opacity-50">
@@ -190,7 +188,7 @@ export function Terminal() {
               [{log.timestamp}]
             </span>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-0.5">
+              <div className="flex items-center gap-3 mb-2">
                 <span className={`text-[10px] font-black uppercase tracking-widest ${
                   log.type === 'SYSTEM' ? 'text-blue-600 dark:text-blue-500' :
                   log.type === 'ACTION' ? 'text-purple-600 dark:text-purple-500' :
@@ -202,13 +200,16 @@ export function Terminal() {
                 </span>
                 <div className="h-[1px] flex-1 bg-zinc-100 dark:bg-zinc-900/50" />
               </div>
-              <p className={`font-medium break-all ${
+              
+              <div className={`prose prose-invert prose-zinc max-w-none text-sm font-medium ${
                 log.type === 'ALERT' ? 'text-zinc-900 dark:text-white' : 
                 log.type === 'COMMAND' ? 'text-emerald-700 dark:text-green-400' :
                 'text-zinc-700 dark:text-zinc-300'
               }`}>
-                {log.message}
-              </p>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {log.message}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         ))}
@@ -220,7 +221,6 @@ export function Terminal() {
         )}
       </div>
       
-      {/* Input Prompt */}
       <div className="p-4 bg-zinc-50 dark:bg-[#0a0a0a] border-t border-zinc-200 dark:border-zinc-900">
         <form onSubmit={handleCommand} className="flex items-center gap-3 group">
           <ChevronRight className={`w-4 h-4 transition-colors ${isProcessing ? 'text-zinc-300 dark:text-zinc-800' : 'text-blue-600 dark:text-blue-500 group-focus-within:text-blue-700 dark:group-focus-within:text-blue-400'}`} />
@@ -229,7 +229,7 @@ export function Terminal() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={isProcessing}
-            placeholder={authenticated ? "ENTER_COMMAND..." : "ESTABLISH_NEURAL_LINK_FIRST..."}
+            placeholder={isAuthenticated ? "ENTER_COMMAND..." : "ESTABLISH_NEURAL_LINK_FIRST..."}
             className="flex-1 bg-transparent border-none p-0 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-0 placeholder:text-zinc-300 dark:placeholder:text-zinc-800 placeholder:font-black placeholder:tracking-[0.2em] transition-all"
             autoFocus
           />

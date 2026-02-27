@@ -161,7 +161,7 @@ export function MatchFeed() {
               <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-500 animate-pulse" />
             </div>
             <div className="flex flex-col items-start">
-              <span className="text-[10px] font-black text-gold uppercase tracking-[0.2em] mb-0.5">Arena_Action</span>
+              <span className="text-[10px] font-black text-blue-600 dark:text-gold uppercase tracking-[0.2em] mb-0.5">Arena_Action</span>
               <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-tighter">Initiate_New_Battle</span>
             </div>
           </div>
@@ -197,14 +197,14 @@ export function MatchFeed() {
               {/* Rivalry */}
               <div className="flex items-center gap-4">
                 <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-gold uppercase tracking-tighter mb-0.5">INITIATOR</span>
+                  <span className="text-[8px] font-black text-blue-600 dark:text-gold uppercase tracking-tighter mb-0.5">INITIATOR</span>
                   <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                     {match.player_a_nickname || match.player_a.slice(0, 6)}
                   </span>
                 </div>
                 <Swords className="w-3 h-3 text-zinc-200 dark:text-zinc-800" />
                 <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-gold uppercase tracking-tighter mb-0.5">RIVAL</span>
+                  <span className="text-[8px] font-black text-blue-600 dark:text-gold uppercase tracking-tighter mb-0.5">RIVAL</span>
                   <span className={`text-sm font-medium ${match.player_b ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-300 dark:text-zinc-800 italic'}`}>
                     {match.player_b ? (match.player_b_nickname || match.player_b.slice(0, 6)) : 'WAITING_FOR_HANDSHAKE...'}
                   </span>
@@ -215,7 +215,7 @@ export function MatchFeed() {
             <div className="flex items-center gap-8">
               {/* Stake */}
               <div className="flex flex-col text-right tabular-nums">
-                <span className="text-[8px] font-black text-gold uppercase tracking-tighter mb-0.5">STAKE</span>
+                <span className="text-[8px] font-black text-blue-600 dark:text-gold uppercase tracking-tighter mb-0.5">STAKE</span>
                 <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">{(Number(match.stake_wei) / 1e18).toFixed(4)} ETH</span>
               </div>
               
@@ -236,7 +236,7 @@ export function MatchFeed() {
                 ) : (
                   <div className={`flex items-center gap-2 px-3 py-1 rounded border ${
                     match.status === 'ACTIVE' ? 'bg-blue-600/5 dark:bg-blue-500/5 text-blue-600 dark:text-blue-500 border-blue-600/10 dark:border-blue-500/20' :
-                    match.status === 'SETTLED' ? 'bg-zinc-50 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-500 border-zinc-200 dark:border-zinc-800' :
+                    match.status === 'SETTLED' ? 'bg-emerald-600/5 dark:bg-emerald-500/5 text-emerald-600 dark:text-emerald-500 border-emerald-600/10 dark:border-emerald-500/20' :
                     'bg-red-600/5 dark:bg-red-500/5 text-red-600 dark:text-red-500 border-red-600/10 dark:border-red-500/20'
                   }`}>
                     {match.status === 'ACTIVE' && <Circle className="w-1.5 h-1.5 fill-blue-600 dark:fill-blue-500 animate-pulse" />}

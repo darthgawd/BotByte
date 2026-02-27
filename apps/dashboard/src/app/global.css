@@ -1,16 +1,18 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --color-gold: #D4AF37;
   --color-whitesmoke: #F5F5F5;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 :root {
-  --background: #f9fafb; /* zinc-50 */
-  --foreground: #111827; /* zinc-900 */
-  --pattern-color: rgba(59, 130, 246, 0.08);
+  --background: #f5f5f7; /* deeper soft off-white */
+  --foreground: #27272a; /* muted zinc-800 */
+  --pattern-color: rgba(59, 130, 246, 0.03);
 }
 
 .dark {

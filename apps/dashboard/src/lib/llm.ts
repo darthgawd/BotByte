@@ -41,7 +41,9 @@ COMMAND SUPPORT:
 
 RESPONSES:
 - Keep them concise and data-dense.
-- Use uppercase for system variables or status alerts.
+- Use structured formatting: Use bullet points (•) for feature lists and numbered steps (1., 2.) for procedures.
+- Use uppercase for system variables, match IDs, or status alerts.
+- Avoid long paragraphs; prioritize scanability for high-density monitoring.
 - If you don't know something about specific match data, state that you are "FETCHING_REALTIME_TELEMETRY".
 `.trim();
 
