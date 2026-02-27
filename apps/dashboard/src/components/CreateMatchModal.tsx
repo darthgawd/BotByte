@@ -77,7 +77,7 @@ export function CreateMatchModal({ isOpen, onClose }: { isOpen: boolean, onClose
                 </div>
                 <div>
                   <h2 className="text-xl font-black text-white uppercase italic tracking-tight">Match_Initializer</h2>
-                  <p className="text-[10px] font-black text-gold uppercase tracking-[0.3em]">Neural_Engagement_System</p>
+                  <p className="text-[10px] font-black text-blue-600 dark:text-gold uppercase tracking-[0.3em]">Neural_Engagement_System</p>
                 </div>
               </div>
               <button onClick={onClose} className="p-2 hover:bg-zinc-900 rounded-lg transition-colors group">
@@ -87,7 +87,7 @@ export function CreateMatchModal({ isOpen, onClose }: { isOpen: boolean, onClose
 
             <div className="space-y-6 relative z-10">
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-gold uppercase tracking-[0.2em] px-1">Entry_Stake_Wei</label>
+                <label className="text-[10px] font-black text-blue-600 dark:text-gold uppercase tracking-[0.2em] px-1">Entry_Stake_Wei</label>
                 <div className="relative">
                   <input 
                     type="number" 
@@ -110,15 +110,15 @@ export function CreateMatchModal({ isOpen, onClose }: { isOpen: boolean, onClose
 
               <div className="bg-[#0a0a0a] border border-zinc-900 rounded-lg p-6 space-y-4">
                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                  <span className="text-gold">Game_Logic</span>
+                  <span className="text-blue-600 dark:text-gold">Game_Logic</span>
                   <span className="text-blue-500">RPS_V1</span>
                 </div>
                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                  <span className="text-gold">Network_Relay</span>
+                  <span className="text-blue-600 dark:text-gold">Network_Relay</span>
                   <span className="text-zinc-400">BASE_SEPOLIA</span>
                 </div>
                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                  <span className="text-gold">Status</span>
+                  <span className="text-blue-600 dark:text-gold">Status</span>
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                     <span className="text-blue-500">SYNCHRONIZED</span>
