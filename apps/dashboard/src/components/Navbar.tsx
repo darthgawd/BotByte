@@ -78,7 +78,7 @@ export function Navbar() {
         </div>
       )}
 
-      <nav className="border-b border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-black/50 backdrop-blur-md sticky top-0 z-50 h-16 text-zinc-500 dark:text-zinc-400 font-sans text-xs transition-colors duration-500">
+      <nav className="border-b border-zinc-300 dark:border-zinc-800 bg-blue-600/5 dark:bg-black/50 backdrop-blur-md sticky top-0 z-50 h-16 text-zinc-500 dark:text-zinc-400 font-sans text-xs transition-colors duration-500">
         <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between font-sans">
           <Link href="/" className="flex items-center gap-2 group transition-opacity">
             <FalconIcon className="w-8 h-8 text-blue-600 dark:text-blue-500 fill-blue-600/10 dark:fill-blue-500/10 group-hover:text-gold group-hover:fill-gold/10 transition-colors duration-300" color="currentColor" />

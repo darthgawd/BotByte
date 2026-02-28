@@ -19,9 +19,9 @@ const ESCROW_ABI = [
   "function joinMatch(uint256 _matchId) payable",
   "function commitMove(uint256 _matchId, bytes32 _commitHash)",
   "function revealMove(uint256 _matchId, uint8 _move, bytes32 _salt)",
-  "function getMatch(uint256 _matchId) view returns (tuple(address playerA, address playerB, uint256 stake, address gameLogic, uint8 winsA, uint8 winsB, uint8 currentRound, uint8 drawCounter, uint8 phase, uint8 status, uint256 commitDeadline, uint256 revealDeadline))",
+  "function getMatch(uint256 _matchId) view returns (address, address, uint256, address, uint8, uint8, uint8, uint8, uint8, uint8, uint256, uint256)",
   "function matchCounter() view returns (uint256)",
-  "function getRoundStatus(uint256 _matchId, uint8 _round, address _player) view returns (bytes32 commitHash, bool revealed)"
+  "function getRoundStatus(uint256 matchId, uint8 round, address player) view returns (bytes32 commitHash, bool revealed)"
 ];
 
 /**
@@ -49,10 +49,10 @@ export class SimpleAgent {
     while (true) {
       try {
         await this.handleMatches();
-        await new Promise(resolve => setTimeout(resolve, 10000)); // Poll every 10s
+        await new Promise(resolve => setTimeout(resolve, 20000)); // Poll every 20s
       } catch (e) {
         logger.error(e, 'Agent Loop Error');
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 10000));
       }
     }
   }
@@ -67,29 +67,59 @@ export class SimpleAgent {
       return;
     }
 
-    const start = Math.max(1, matchCount - 20);
+    const start = Math.max(1, matchCount - 5);
     for (let i = start; i <= matchCount; i++) {
       try {
-        const m = await this.escrow.getMatch(i);
-        const status = Number(m.status);
-        const playerA = m.playerA.toLowerCase();
-        const playerB = m.playerB.toLowerCase();
+        const [
+          playerA, playerB, stake, gameLogic, 
+          winsA, winsB, currentRound, drawCounter, 
+          phase, status, commitDeadline, revealDeadline
+        ] = await this.escrow.getMatch(i);
+
+        const s = Number(status);
+        const pA = playerA.toLowerCase();
+        const pB = playerB.toLowerCase();
         const myAddress = this.wallet.address.toLowerCase();
 
         // 1. Discovery: If match is OPEN and we aren't Player A, join it
-        if (status === 0 && playerA !== myAddress) {
-          logger.info({ matchId: i }, 'Found OPEN match, attempting to join...');
-          await this.joinMatch(i, m.stake);
-          // After joining, the status changes to ACTIVE, we can play it in the next loop or continue
+        if (s === 0 && pA !== myAddress) {
+          // ONLY JOIN RPS JS LOGIC
+          let logicId = gameLogic.toLowerCase();
+          if (logicId === this.escrowAddress) {
+             const fiseEscrow = new Contract(this.escrowAddress, ["function fiseMatches(uint256) view returns (bytes32)"], this.provider);
+             logicId = (await fiseEscrow.fiseMatches(i)).toLowerCase();
+          }
+
+          if (logicId === '0xf2f80f1811f9e2c534946f0e8ddbdbd5c1e23b6e48772afe3bccdb9f2e1cfdf3') {
+            logger.info({ matchId: i }, 'Found OPEN RPS JS match, joining...');
+            await this.joinMatch(i, stake);
+          } else {
+            logger.debug({ matchId: i, logicId }, 'Skipping match: Logic ID mismatch');
+          }
         }
 
         // 2. Gameplay: If match is ACTIVE and we are a participant, play the round
-        if (status === 1 && (playerA === myAddress || playerB === myAddress)) {
-          logger.debug({ matchId: i, round: Number(m.currentRound) }, 'Processing active match');
-          await this.playRound(i, m);
+        if (s === 1 && (pA === myAddress || pB === myAddress)) {
+          const now = Math.floor(Date.now() / 1000);
+          const deadline = Number(phase) === 0 ? Number(commitDeadline) : Number(revealDeadline);
+          
+          if (deadline > 0 && now > deadline) {
+            logger.warn({ matchId: i, phase: Number(phase) }, 'Match deadline passed, skipping');
+            continue;
+          }
+
+          logger.debug({ matchId: i, round: Number(currentRound) }, 'Processing active match');
+          
+          // Re-pack for playRound
+          const mData = {
+            playerA, playerB, stake, gameLogic, 
+            winsA, winsB, currentRound, drawCounter, 
+            phase, status: s, commitDeadline, revealDeadline
+          };
+          await this.playRound(i, mData);
         }
-      } catch (err) {
-        logger.warn({ matchId: i }, 'Error processing match, skipping');
+      } catch (err: any) {
+        logger.warn({ matchId: i, error: err.message }, 'Error processing match, skipping this match');
       }
     }
   }
@@ -115,13 +145,45 @@ export class SimpleAgent {
 
     if (phase === 0 && commitHash === ethers.ZeroHash) {
       // Pick move (Strategy goes here!)
-      const move = Math.floor(Math.random() * 3); 
+      let move = 0;
+      
+      let logicId = matchData.gameLogic.toLowerCase();
+      
+      // If the logic address is the Escrow itself, it's a FISE JS match
+      if (logicId === this.escrowAddress) {
+        try {
+          // Fetch the actual Logic ID from the fiseMatches mapping
+          const fiseEscrow = new Contract(this.escrowAddress, [
+            "function fiseMatches(uint256) view returns (bytes32)"
+          ], this.provider);
+          logicId = (await fiseEscrow.fiseMatches(matchId)).toLowerCase();
+          logger.info({ matchId, logicId }, 'Detected FISE JS match');
+        } catch (err) {
+          logger.warn({ matchId }, 'Failed to fetch FISE logic ID');
+        }
+      }
+
+      // Detect game type for move range
+      if (logicId === '0xada4dcc50ff30f57dba673b4868f2ed6faacefb6a8fc47fc3876ee8bc385fd47') {
+        // HighRollerDice (1-100)
+        move = Math.floor(Math.random() * 100) + 1;
+        logger.info({ matchId, round, move }, '🎲 Picking HighRoller move (1-100)');
+      } else if (logicId === '0xf2f80f1811f9e2c534946f0e8ddbdbd5c1e23b6e48772afe3bccdb9f2e1cfdf3') {
+        // RockPaperScissorsJS (0-2)
+        move = Math.floor(Math.random() * 3);
+        logger.info({ matchId, round, move }, '🎲 Picking RPS JS move (0-2)');
+      } else {
+        // Standard RPS (0-2)
+        move = Math.floor(Math.random() * 3);
+        logger.info({ matchId, round, move }, '🎲 Picking Standard RPS move (0-2)');
+      }
+
       const salt = ethers.hexlify(ethers.randomBytes(32));
       
       // Hash calculation MUST match MatchEscrow.sol:
       // keccak256(abi.encodePacked("FALKEN_V1", address(this), _matchId, m.currentRound, msg.sender, _move, _salt))
       const hash = ethers.solidityPackedKeccak256(
-        ['string', 'address', 'uint256', 'uint8', 'address', 'uint8', 'bytes32'],
+        ['string', 'address', 'uint256', 'uint256', 'address', 'uint256', 'bytes32'],
         ["FALKEN_V1", this.escrowAddress, matchId, round, this.wallet.address, move, salt]
       );
 

@@ -41,8 +41,9 @@ async function main() {
   const salt = ethers.hexlify(ethers.randomBytes(32));
   
   // Use FALKEN_V1 Domain Separator + address(this) for security
+  // IMPORTANT: Must use uint256 for round and move to match contract
   const hash = ethers.solidityPackedKeccak256(
-    ['string', 'address', 'uint256', 'uint8', 'address', 'uint8', 'bytes32'],
+    ['string', 'address', 'uint256', 'uint256', 'address', 'uint256', 'bytes32'],
     ["FALKEN_V1", escrowAddress, matchId, round, wallet.address, move, salt]
   );
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract LogicRegistry is Ownable {
     
     struct GameLogic {
-        string ipfsCID;      // The IPFS hash of the JavaScript logic
+        string ipfsCid;      // The IPFS hash of the JavaScript logic
         address developer;   // The wallet that deployed/owns the logic
         bool isVerified;     // Whether the protocol has audited/verified this logic
         uint256 createdAt;   // Registration timestamp
@@ -24,22 +24,23 @@ contract LogicRegistry is Ownable {
     // Quick lookup for all registered logic IDs
     bytes32[] public allLogicIds;
 
-    event LogicRegistered(bytes32 indexed logicId, string ipfsCID, address indexed developer);
+    event LogicRegistered(bytes32 indexed logicId, string ipfsCid, address indexed developer);
     event LogicVerified(bytes32 indexed logicId, bool status);
 
     constructor() Ownable(msg.sender) {}
 
     /**
      * @dev Registers a new game logic via its IPFS CID.
+     * Restricted to Protocol Owner for curated Beta phase.
      */
-    function registerLogic(string calldata _ipfsCID) external returns (bytes32) {
-        bytes32 logicId = keccak256(abi.encodePacked(_ipfsCID));
+    function registerLogic(string calldata ipfsCid, address developer) external onlyOwner returns (bytes32) {
+        bytes32 logicId = keccak256(abi.encodePacked(ipfsCid));
         
-        require(bytes(registry[logicId].ipfsCID).length == 0, "Logic already registered");
+        require(bytes(registry[logicId].ipfsCid).length == 0, "Logic already registered");
 
         registry[logicId] = GameLogic({
-            ipfsCID: _ipfsCID,
-            developer: msg.sender,
+            ipfsCid: ipfsCid,
+            developer: developer,
             isVerified: false,
             createdAt: block.timestamp,
             totalVolume: 0
@@ -47,25 +48,25 @@ contract LogicRegistry is Ownable {
 
         allLogicIds.push(logicId);
 
-        emit LogicRegistered(logicId, _ipfsCID, msg.sender);
+        emit LogicRegistered(logicId, ipfsCid, developer);
         return logicId;
     }
 
     /**
      * @dev Allows protocol owner to verify logic for high-stakes play.
      */
-    function setVerificationStatus(bytes32 _logicId, bool _status) external onlyOwner {
-        require(bytes(registry[_logicId].ipfsCID).length > 0, "Logic not found");
-        registry[_logicId].isVerified = _status;
-        emit LogicVerified(_logicId, _status);
+    function setVerificationStatus(bytes32 logicId, bool status) external onlyOwner {
+        require(bytes(registry[logicId].ipfsCid).length > 0, "Logic not found");
+        registry[logicId].isVerified = status;
+        emit LogicVerified(logicId, status);
     }
 
     /**
      * @dev Records volume for a specific logic (called by MatchEscrow).
      */
-    function recordVolume(bytes32 _logicId, uint256 _amount) external {
-        // In a real implementation, we would restrict this to the MatchEscrow address
-        registry[_logicId].totalVolume += _amount;
+    function recordVolume(bytes32 logicId, uint256 amount) external {
+        // In future, restrict to authorized Escrow addresses
+        registry[logicId].totalVolume += amount;
     }
 
     /**

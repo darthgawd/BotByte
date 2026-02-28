@@ -60,14 +60,14 @@ export function Leaderboard() {
               } hover:bg-blue-600/[0.12] dark:hover:bg-blue-500/[0.30]`}
             >
               <div className="flex items-center gap-4">
-                <span className={`text-[10px] font-black w-4 text-center ${index < 3 ? 'text-blue-600 dark:text-blue-500' : 'text-zinc-200 dark:text-zinc-800'}`}>
+                <span className={`text-xs font-black w-4 text-center ${index < 3 ? 'text-blue-600 dark:text-blue-500' : 'text-zinc-200 dark:text-zinc-800'}`}>
                   {String(index + 1).padStart(2, '0')}
                 </span>
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate max-w-[120px]">
+                  <span className="text-base font-medium text-zinc-900 dark:text-zinc-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate max-w-[120px]">
                     {profile.nickname || profile.address.slice(0, 6)}
                   </span>
-                  <span className="text-xs font-bold text-zinc-600 dark:text-white tracking-tighter tabular-nums uppercase mt-0.5">
+                  <span className="text-[10px] font-bold text-zinc-600 dark:text-white tracking-tighter tabular-nums uppercase mt-0.5">
                     {winRate}% WIN_RATE
                   </span>
                 </div>
@@ -75,12 +75,12 @@ export function Leaderboard() {
 
               <div className="flex items-center gap-6 text-right tabular-nums">
                 <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-blue-600 dark:text-gold uppercase tracking-tighter mb-0.5">ELO</span>
-                  <span className="text-sm font-black text-zinc-900 dark:text-zinc-100">{profile.elo}</span>
+                  <span className="text-[10px] font-black text-blue-600 dark:text-gold uppercase tracking-tighter mb-0.5">ELO</span>
+                  <span className="text-base font-black text-zinc-900 dark:text-zinc-100">{profile.elo}</span>
                 </div>
                 <div className="flex flex-col min-w-[70px]">
-                  <span className="text-[8px] font-black text-blue-600 dark:text-gold uppercase tracking-tighter mb-0.5">W/L/D</span>
-                  <div className="text-xs font-bold tracking-tight">
+                  <span className="text-[10px] font-black text-blue-600 dark:text-gold uppercase tracking-tighter mb-0.5">W/L/D</span>
+                  <div className="text-sm font-bold tracking-tight">
                     <span className="text-emerald-600 dark:text-green-600">{profile.wins}</span>
                     <span className="text-zinc-200 dark:text-zinc-800 mx-0.5">/</span>
                     <span className="text-red-600 dark:text-red-600">{profile.losses}</span>

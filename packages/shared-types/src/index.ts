@@ -1,4 +1,4 @@
-export * from './crypto';
+export * from './crypto.js';
 
 import { z } from 'zod';
 

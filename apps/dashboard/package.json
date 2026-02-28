@@ -11,6 +11,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
     "@coinbase/onchainkit": "^1.1.2",
+    "@falken/shared-types": "workspace:*",
     "@google/generative-ai": "^0.21.0",
     "@privy-io/react-auth": "^3.14.1",
     "@supabase/supabase-js": "^2.97.0",
@@ -25,8 +26,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
+    "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
-    "shared-types": "workspace:*",
     "tailwind-merge": "^3.5.0",
     "viem": "^2.21.0",
     "wagmi": "^2.19.5"

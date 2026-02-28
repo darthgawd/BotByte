@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono } from "next/font/google";
+import { DM_Mono } from "next/font/google";
 import "./global.css";
 import { Providers } from "../components/Providers";
 
-const jetbrainsMono = JetBrains_Mono({
+const dmMono = DM_Mono({
+  weight: ["300", "400", "500"],
   subsets: ["latin"],
-  variable: "--font-jetbrains-mono",
+  variable: "--font-dm-mono",
 });
 
 export const metadata: Metadata = {
@@ -19,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${jetbrainsMono.variable}`}>
+    <html lang="en" className={`${dmMono.variable}`}>
       <body className="antialiased font-mono">
         <Providers>{children}</Providers>
       </body>

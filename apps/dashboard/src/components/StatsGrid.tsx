@@ -83,10 +83,10 @@ export function StatsGrid() {
           } hover:bg-zinc-100 dark:hover:bg-blue-500/[0.30]`}
         >
           <div className="flex items-center gap-3">
-            <item.icon className="w-3.5 h-3.5 text-zinc-300 dark:text-zinc-700 group-hover:text-blue-600 dark:group-hover:text-blue-500 transition-colors" />
-            <span className="text-[10px] font-black text-blue-600 dark:text-gold uppercase tracking-[0.2em] transition-colors">{item.label}</span>
+            <item.icon className="w-4 h-4 text-zinc-300 dark:text-zinc-700 group-hover:text-blue-600 dark:group-hover:text-blue-500 transition-colors" />
+            <span className="text-xs font-black text-blue-600 dark:text-gold uppercase tracking-[0.2em] transition-colors">{item.label}</span>
           </div>
-          <div className="text-sm font-bold text-zinc-900 dark:text-zinc-300 tabular-nums">{item.value}</div>
+          <div className="text-base font-bold text-zinc-900 dark:text-zinc-300 tabular-nums">{item.value}</div>
         </div>
       ))}
     </div>

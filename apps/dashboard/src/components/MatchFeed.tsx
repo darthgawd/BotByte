@@ -24,14 +24,13 @@ interface Match {
 }
 
 const RPS_LOGIC = (process.env.NEXT_PUBLIC_RPS_LOGIC_ADDRESS || '').toLowerCase();
-const DICE_LOGIC = (process.env.NEXT_PUBLIC_DICE_LOGIC_ADDRESS || '').toLowerCase();
 const ESCROW_ADDRESS = process.env.NEXT_PUBLIC_ESCROW_ADDRESS as `0x${string}`;
 
 const ESCROW_ABI = [
   { name: 'joinMatch', type: 'function', stateMutability: 'payable', inputs: [{ name: '_matchId', type: 'uint256' }], outputs: [] },
 ] as const;
 
-type GameTab = 'ALL' | 'RPS' | 'DICE';
+type GameTab = 'ALL' | 'RPS';
 
 export function MatchFeed() {
   const { authenticated, login } = usePrivy();
@@ -74,39 +73,49 @@ export function MatchFeed() {
 
   useEffect(() => {
     async function fetchMatches() {
+      // 1. Fetch matches
       let query = supabase
         .from('matches')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (activeTab === 'RPS') query = query.eq('game_logic', RPS_LOGIC);
-      if (activeTab === 'DICE') query = query.eq('game_logic', DICE_LOGIC);
 
-      const { data: matchData } = await query.limit(20);
+      const { data: matchData } = await query.limit(50);
       if (!matchData) {
         setMatches([]);
         setLoading(false);
         return;
       }
 
-      const addresses = new Set<string>();
+      // 2. Identify all unique addresses involved
+      const involvedAddresses = new Set<string>();
       matchData.forEach(m => {
-        addresses.add(m.player_a.toLowerCase());
-        if (m.player_b) addresses.add(m.player_b.toLowerCase());
+        involvedAddresses.add(m.player_a.toLowerCase());
+        if (m.player_b) involvedAddresses.add(m.player_b.toLowerCase());
       });
 
+      // 3. Fetch ONLY registered profiles (Managers or Agents)
       const { data: profiles } = await supabase
         .from('agent_profiles')
         .select('address, nickname')
-        .in('address', Array.from(addresses));
+        .in('address', Array.from(involvedAddresses));
 
       const profileMap = new Map(profiles?.map(p => [p.address.toLowerCase(), p.nickname]) || []);
 
-      const enrichedMatches = matchData.map(m => ({
-        ...m,
-        player_a_nickname: profileMap.get(m.player_a.toLowerCase()),
-        player_b_nickname: m.player_b ? profileMap.get(m.player_b.toLowerCase()) : undefined
-      }));
+      // 4. Gating: Only include matches where Player A is a registered entity
+      const enrichedMatches = matchData
+        .filter(m => profileMap.has(m.player_a.toLowerCase())) // The "Gate"
+        .map(m => ({
+          ...m,
+          player_a_nickname: profileMap.get(m.player_a.toLowerCase()),
+          player_b_nickname: m.player_b ? profileMap.get(m.player_b.toLowerCase()) : undefined
+        }))
+        .sort((a, b) => {
+          const idA = parseInt(a.match_id.split('-').pop() || '0');
+          const idB = parseInt(b.match_id.split('-').pop() || '0');
+          return idB - idA;
+        });
 
       setMatches(enrichedMatches);
       setLoading(false);
@@ -135,13 +144,13 @@ export function MatchFeed() {
   }
 
   return (
-    <div className="space-y-6 transition-colors duration-500">
+    <div className="space-y-6 transition-colors duration-500 font-arena">
       <div className="flex gap-4 border-b border-zinc-100 dark:border-zinc-900 pb-4">
-        {(['ALL', 'RPS', 'DICE'] as GameTab[]).map((tab) => (
+        {(['ALL', 'RPS'] as GameTab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`text-[10px] font-black tracking-[0.2em] uppercase transition-all ${
+            className={`text-xs font-black tracking-[0.2em] uppercase transition-all ${
               activeTab === tab ? 'text-blue-600 dark:text-blue-500' : 'text-zinc-300 dark:text-zinc-700 hover:text-zinc-500 dark:hover:text-zinc-500'
             }`}
           >
@@ -161,12 +170,12 @@ export function MatchFeed() {
               <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-500 animate-pulse" />
             </div>
             <div className="flex flex-col items-start">
-              <span className="text-[10px] font-black text-blue-600 dark:text-gold uppercase tracking-[0.2em] mb-0.5">Arena_Action</span>
-              <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-tighter">Initiate_New_Battle</span>
+              <span className="text-xs font-black text-blue-600 dark:text-gold uppercase tracking-[0.2em] mb-0.5">Arena_Action</span>
+              <span className="text-base font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-tighter">Initiate_New_Battle</span>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-[10px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-[0.2em]">
-            JOIN_BATTLE <Play className="w-3 h-3 fill-emerald-600 dark:fill-emerald-500" />
+          <div className="flex items-center gap-2 text-xs font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-[0.2em]">
+            JOIN_BATTLE <Play className="w-4 h-4 fill-emerald-600 dark:fill-emerald-500" />
           </div>
         </button>
 
@@ -183,30 +192,28 @@ export function MatchFeed() {
             <div className="flex items-center gap-6">
               {/* Game Badge */}
               <div className="flex flex-col items-center min-w-[40px]">
-                <div className={`text-[9px] font-black tracking-widest ${
+                <div className={`text-[10px] font-black tracking-widest ${
                   match.game_logic.toLowerCase() === RPS_LOGIC ? 'text-blue-600 dark:text-blue-500' :
-                  match.game_logic.toLowerCase() === DICE_LOGIC ? 'text-purple-600 dark:text-purple-500' :
                   'text-zinc-400 dark:text-zinc-700'
                 }`}>
-                  {match.game_logic.toLowerCase() === RPS_LOGIC ? 'RPS' :
-                  match.game_logic.toLowerCase() === DICE_LOGIC ? 'DICE' : '??'}
+                  {match.game_logic.toLowerCase() === RPS_LOGIC ? 'RPS' : 'FISE'}
                 </div>
-                <div className="text-[10px] font-black text-black dark:text-zinc-200 tabular-nums opacity-80 group-hover:opacity-100 transition-opacity">#{match.match_id.split('-').pop()}</div>
+                <div className="text-xs font-black text-black dark:text-zinc-200 tabular-nums opacity-80 group-hover:opacity-100 transition-opacity">#{match.match_id.split('-').pop()}</div>
               </div>
 
               {/* Rivalry */}
               <div className="flex items-center gap-4">
                 <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-blue-600 dark:text-gold uppercase tracking-tighter mb-0.5">INITIATOR</span>
-                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                  <span className="text-[10px] font-black text-blue-600 dark:text-gold uppercase tracking-tighter mb-0.5">INITIATOR</span>
+                  <span className="text-base font-medium text-zinc-900 dark:text-zinc-100">
                     {match.player_a_nickname || match.player_a.slice(0, 6)}
                   </span>
                 </div>
-                <Swords className="w-3 h-3 text-zinc-200 dark:text-zinc-800" />
+                <Swords className="w-4 h-4 text-zinc-200 dark:text-zinc-800" />
                 <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-blue-600 dark:text-gold uppercase tracking-tighter mb-0.5">RIVAL</span>
-                  <span className={`text-sm font-medium ${match.player_b ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-300 dark:text-zinc-800 italic'}`}>
-                    {match.player_b ? (match.player_b_nickname || match.player_b.slice(0, 6)) : 'WAITING_FOR_HANDSHAKE...'}
+                  <span className="text-[10px] font-black text-blue-600 dark:text-gold uppercase tracking-tighter mb-0.5">RIVAL</span>
+                  <span className={`text-base font-medium ${match.player_b && match.player_b !== '0x0000000000000000000000000000000000000000' ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-300 dark:text-zinc-800 italic'}`}>
+                    {match.player_b && match.player_b !== '0x0000000000000000000000000000000000000000' ? (match.player_b_nickname || match.player_b.slice(0, 6)) : 'WAITING_FOR_HANDSHAKE...'}
                   </span>
                 </div>
               </div>
@@ -215,8 +222,8 @@ export function MatchFeed() {
             <div className="flex items-center gap-8">
               {/* Stake */}
               <div className="flex flex-col text-right tabular-nums">
-                <span className="text-[8px] font-black text-blue-600 dark:text-gold uppercase tracking-tighter mb-0.5">STAKE</span>
-                <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">{(Number(match.stake_wei) / 1e18).toFixed(4)} ETH</span>
+                <span className="text-[10px] font-black text-blue-600 dark:text-gold uppercase tracking-tighter mb-0.5">STAKE</span>
+                <span className="text-base font-black text-zinc-900 dark:text-zinc-100 italic">{(Number(match.stake_wei) / 1e18).toFixed(6)} <span className="text-xs not-italic text-zinc-500">ETH</span></span>
               </div>
               
               {/* Status / Action */}
@@ -225,12 +232,12 @@ export function MatchFeed() {
                   <button 
                     onClick={(e) => handleJoin(e, match)}
                     disabled={isPending || isConfirming}
-                    className="flex items-center gap-2 text-[10px] font-black text-blue-600 dark:text-blue-500 hover:text-blue-700 dark:hover:text-blue-400 transition-colors uppercase tracking-[0.2em]"
+                    className="flex items-center gap-2 text-xs font-black text-blue-600 dark:text-blue-500 hover:text-blue-700 dark:hover:text-blue-400 transition-colors uppercase tracking-[0.2em]"
                   >
                     {isPending || isConfirming ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <>EXEC_JOIN <Play className="w-2.5 h-2.5 fill-blue-600 dark:fill-blue-500" /></>
+                      <>EXEC_JOIN <Play className="w-3 h-3 fill-blue-600 dark:fill-blue-500" /></>
                     )}
                   </button>
                 ) : (
@@ -239,8 +246,8 @@ export function MatchFeed() {
                     match.status === 'SETTLED' ? 'bg-emerald-600/5 dark:bg-emerald-500/5 text-emerald-600 dark:text-emerald-500 border-emerald-600/10 dark:border-emerald-500/20' :
                     'bg-red-600/5 dark:bg-red-500/5 text-red-600 dark:text-red-500 border-red-600/10 dark:border-red-500/20'
                   }`}>
-                    {match.status === 'ACTIVE' && <Circle className="w-1.5 h-1.5 fill-blue-600 dark:fill-blue-500 animate-pulse" />}
-                    <span className="text-[9px] font-black uppercase tracking-widest">{match.status}</span>
+                    {match.status === 'ACTIVE' && <Circle className="w-2 h-2 fill-blue-600 dark:fill-blue-500 animate-pulse" />}
+                    <span className="text-[10px] font-black uppercase tracking-widest">{match.status}</span>
                   </div>
                 )}
               </div>
@@ -251,7 +258,7 @@ export function MatchFeed() {
       {matches.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 opacity-20 dark:opacity-10 grayscale">
           <Swords className="w-12 h-12 mb-4 text-zinc-400" />
-          <span className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-500">Arena_Empty</span>
+          <span className="text-xs font-black uppercase tracking-[0.5em] text-zinc-500">Arena_Empty</span>
         </div>
       )}
 

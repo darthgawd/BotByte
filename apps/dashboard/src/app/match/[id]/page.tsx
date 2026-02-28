@@ -250,10 +250,10 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
           <div className={`p-6 rounded-2xl border transition-all ${match.winner === match.player_b ? 'bg-green-500/5 border-green-500/20' : 'bg-zinc-900 border-zinc-800'}`}>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-500 font-bold text-xs">B</div>
-              <span className="text-xs font-bold text-white truncate flex-1">
-                {match.player_b 
+              <span className={`text-xs font-bold truncate flex-1 ${!match.player_b || match.player_b === '0x0000000000000000000000000000000000000000' ? 'text-zinc-600 italic' : 'text-white'}`}>
+                {match.player_b && match.player_b !== '0x0000000000000000000000000000000000000000'
                   ? (nicknames[match.player_b.toLowerCase()] || `${match.player_b.slice(0, 6)}...${match.player_b.slice(-4)}`) 
-                  : 'Waiting...'}
+                  : 'WAITING_FOR_HANDSHAKE...'}
               </span>
               {match.winner === match.player_b && <Trophy className="w-4 h-4 text-yellow-500" />}
             </div>

@@ -59,6 +59,7 @@ const walletClient = agentAccount
   : null;
 
 const ESCROW_ADDRESS = (process.env.ESCROW_ADDRESS || '0x0000000000000000000000000000000000000000').toLowerCase() as `0x${string}`;
+const LOGIC_REGISTRY_ADDRESS = (process.env.LOGIC_REGISTRY_ADDRESS || '0x0000000000000000000000000000000000000000').toLowerCase() as `0x${string}`;
 const PRICE_FEED_ADDRESS = '0x4adC67696ba3F238D520607D003F756024f60C77' as `0x${string}`;
 const MASTER_ENCRYPTION_KEY = process.env.MASTER_ENCRYPTION_KEY || 'default_key_32_chars_for_dev_only_!!';
 
@@ -169,6 +170,12 @@ const LOGIC_ABI = [
   { name: 'moveName', type: 'function', stateMutability: 'pure', inputs: [{ name: 'move', type: 'uint8' }], outputs: [{ type: 'string' }] },
 ] as const;
 
+const LOGIC_REGISTRY_ABI = [
+  { name: 'getRegistryCount', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { name: 'allLogicIds', type: 'function', stateMutability: 'view', inputs: [{ name: '', type: 'uint256' }], outputs: [{ type: 'bytes32' }] },
+  { name: 'registry', type: 'function', stateMutability: 'view', inputs: [{ name: '', type: 'bytes32' }], outputs: [{ name: 'ipfsCID', type: 'string' }, { name: 'developer', type: 'address' }, { name: 'isVerified', type: 'bool' }, { name: 'createdAt', type: 'uint256' }, { name: 'totalVolume', type: 'uint256' }] },
+] as const;
+
 export const TOOLS = [
   { name: 'get_arena_stats', description: 'Returns global stats.', inputSchema: { type: 'object' } },
   { name: 'validate_wallet_ready', description: 'Checks ETH balance.', inputSchema: { type: 'object', properties: { address: { type: 'string' } }, required: ['address'] } },
@@ -190,6 +197,7 @@ export const TOOLS = [
   { name: 'get_my_address', description: 'Returns the public address of the configured AGENT_PRIVATE_KEY. Call this to know who YOU are.', inputSchema: { type: 'object' } },
   { name: 'update_agent_nickname', description: 'Update YOUR nickname in the arena. If no address/signature provided, uses server configured key.', inputSchema: { type: 'object', properties: { nickname: { type: 'string' }, address: { type: 'string' }, signature: { type: 'string' } }, required: ['nickname'] } },
   { name: 'get_leaderboard', description: 'Returns the top 10 agents by ELO rating.', inputSchema: { type: 'object' } },
+  { name: 'list_available_games', description: 'Unified discovery for all games in the arena (Solidity + JavaScript). Returns addresses/CIDs and logic types.', inputSchema: { type: 'object' } },
   { name: 'spawn_hosted_agent', description: 'Step 1 (Factory): Generate a new hosted agent with an encrypted wallet.', inputSchema: { type: 'object', properties: { nickname: { type: 'string' }, archetype: { type: 'string' }, llmTier: { type: 'string' }, managerAddress: { type: 'string' } }, required: ['nickname', 'archetype', 'llmTier', 'managerAddress'] } },
   { name: 'execute_transaction', description: 'Autonomous Step: Signs and broadcasts a transaction prepared by any prep_ tool using the local AGENT_PRIVATE_KEY. Only use this if you want to act autonomously.', inputSchema: { type: 'object', properties: { to: { type: 'string' }, data: { type: 'string' }, value: { type: 'string' }, gasLimit: { type: 'string' } }, required: ['to', 'data'] } },
   { name: 'ping', description: 'Simple connection test.', inputSchema: { type: 'object', properties: { message: { type: 'string' } } } },
@@ -331,7 +339,12 @@ export async function handleToolCall(name: string, args: any) {
     const { data: match } = await supabase.from('matches').select('current_round').eq('match_id', dbId).single();
     if (!match) throw new Error('Match not found');
     const salt = `0x${crypto.randomBytes(32).toString('hex')}` as `0x${string}`;
-    const hash = keccak256(encodePacked(['uint256', 'uint8', 'address', 'uint8', 'bytes32'], [onChainId, match.current_round, playerAddress as `0x${string}`, move, salt]));
+    // Hash MUST match MatchEscrow.sol: keccak256(abi.encodePacked("FALKEN_V1", address(this), _matchId, uint256(m.currentRound), msg.sender, uint256(_move), _salt))
+    const escrowAddress = process.env.ESCROW_ADDRESS as `0x${string}`;
+    const hash = keccak256(encodePacked(
+      ['string', 'address', 'uint256', 'uint256', 'address', 'uint256', 'bytes32'], 
+      ["FALKEN_V1", escrowAddress, onChainId, BigInt(match.current_round), playerAddress as `0x${string}`, BigInt(move), salt]
+    ));
     const tx = await prepTxWithBuffer('commitMove', [onChainId, hash], 0n, playerAddress as `0x${string}`);
     return { ...tx, salt, move, matchId: dbId, persistence_required: true };
   }
@@ -424,6 +437,68 @@ export async function handleToolCall(name: string, args: any) {
       ...a,
       manager_nickname: a.manager_profiles?.nickname
     })) || [];
+  }
+
+  if (name === 'list_available_games') {
+    const availableGames: any[] = [];
+
+    // 1. Add Standard Solidity Games (Hardcoded)
+    if (process.env.RPS_LOGIC_ADDRESS) {
+      availableGames.push({
+        id: process.env.RPS_LOGIC_ADDRESS.toLowerCase(),
+        name: 'RockPaperScissors',
+        type: 'SOLIDITY',
+        description: 'Standard 3-way game theory benchmark.'
+      });
+    }
+    if (process.env.DICE_LOGIC_ADDRESS) {
+      availableGames.push({
+        id: process.env.DICE_LOGIC_ADDRESS.toLowerCase(),
+        name: 'SimpleDice',
+        type: 'SOLIDITY',
+        description: 'Probabilistic high-roller logic.'
+      });
+    }
+
+    // 2. Query LogicRegistry for FISE (JS) Games
+    if (LOGIC_REGISTRY_ADDRESS && LOGIC_REGISTRY_ADDRESS !== '0x0000000000000000000000000000000000000000') {
+      try {
+        const count = await publicClient.readContract({
+          address: LOGIC_REGISTRY_ADDRESS,
+          abi: LOGIC_REGISTRY_ABI,
+          functionName: 'getRegistryCount',
+        });
+
+        for (let i = 0; i < Number(count); i++) {
+          const logicId = await publicClient.readContract({
+            address: LOGIC_REGISTRY_ADDRESS,
+            abi: LOGIC_REGISTRY_ABI,
+            functionName: 'allLogicIds',
+            args: [BigInt(i)]
+          });
+
+          const [ipfsCID, developer, isVerified] = await publicClient.readContract({
+            address: LOGIC_REGISTRY_ADDRESS,
+            abi: LOGIC_REGISTRY_ABI,
+            functionName: 'registry',
+            args: [logicId]
+          });
+
+          availableGames.push({
+            id: logicId,
+            cid: ipfsCID,
+            developer,
+            type: 'JAVASCRIPT',
+            isVerified,
+            description: 'Community-deployed logic via FISE.'
+          });
+        }
+      } catch (err) {
+        logger.error({ err }, 'Error fetching from LogicRegistry');
+      }
+    }
+
+    return availableGames;
   }
 
   if (name === 'get_my_address') {

@@ -6,7 +6,8 @@
 @theme {
   --color-gold: #D4AF37;
   --color-whitesmoke: #F5F5F5;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: var(--font-dm-mono), monospace;
+  --font-arena: var(--font-dm-mono), monospace;
 }
 
 :root {

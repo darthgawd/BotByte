@@ -1,4 +1,4 @@
-import { ethers, Contract } from 'ethers';
+import { ethers, Contract, Interface } from 'ethers';
 import { SaltManager } from 'reference-agent';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
@@ -23,12 +23,13 @@ const supabase = createClient(
 
 const ESCROW_ABI = [
   "function createMatch(uint256 _stake, address _gameLogic) payable",
+  "function createFiseMatch(uint256 stake, bytes32 logicId) payable",
   "function joinMatch(uint256 _matchId) payable",
   "function commitMove(uint256 _matchId, bytes32 _commitHash)",
   "function revealMove(uint256 _matchId, uint8 _move, bytes32 _salt)",
-  "function getMatch(uint256 _matchId) view returns (tuple(address playerA, address playerB, uint256 stake, address gameLogic, uint8 winsA, uint8 winsB, uint8 currentRound, uint8 drawCounter, uint8 phase, uint8 status, uint256 commitDeadline, uint256 revealDeadline))",
+  "function getMatch(uint256 _matchId) view returns (address, address, uint256, address, uint8, uint8, uint8, uint8, uint8, uint8, uint256, uint256)",
   "function matchCounter() view returns (uint256)",
-  "function getRoundStatus(uint256 _matchId, uint8 _round, address _player) view returns (bytes32 commitHash, bool revealed)"
+  "function getRoundStatus(uint256 matchId, uint8 round, address player) view returns (bytes32 commitHash, bool revealed)"
 ];
 
 const LOGIC_ABI = [
@@ -58,10 +59,9 @@ class HouseBot {
     const escrow = process.env.ESCROW_ADDRESS;
     const priceProvider = process.env.PRICE_PROVIDER_ADDRESS;
     
-    // Support multiple logic addresses from env
+    // Support ONLY RockPaperScissorsJS
     this.gameLogics = [
-      process.env.RPS_LOGIC_ADDRESS!,
-      process.env.DICE_LOGIC_ADDRESS
+      "0xf2f80f1811f9e2c534946f0e8ddbdbd5c1e23b6e48772afe3bccdb9f2e1cfdf3", // RockPaperScissorsJS (JS)
     ].filter(Boolean) as string[];
 
     logger.info({
@@ -73,7 +73,11 @@ class HouseBot {
 
     this.wallet = new ethers.Wallet(pk!, this.provider);
     this.escrowAddress = escrow!.toLowerCase();
-    this.escrow = new Contract(this.escrowAddress, ESCROW_ABI, this.wallet);
+    
+    // Create Interface explicitly for proper encoding
+    const escrowInterface = new Interface(ESCROW_ABI);
+    this.escrow = new Contract(this.escrowAddress, escrowInterface, this.wallet);
+    
     this.priceProvider = new Contract(priceProvider!, PRICE_PROVIDER_ABI, this.wallet);
     this.saltManager = new SaltManager();
   }
@@ -97,7 +101,7 @@ class HouseBot {
     while (true) {
       try {
         await this.handleMatches();
-        await new Promise(resolve => setTimeout(resolve, 15000)); // Poll every 15s
+        await new Promise(resolve => setTimeout(resolve, 30000)); // Polling slower: every 30s
       } catch (e) {
         logger.error(e, 'House Bot Error');
         await new Promise(resolve => setTimeout(resolve, 10000)); // Back off on error
@@ -145,75 +149,116 @@ class HouseBot {
 
     const openByLogic: Record<string, boolean> = {};
     let activeMatchesCount = 0;
+    // Track matches where Joshua is waiting for an opponent (he's playerA but no playerB yet)
+    const waitingMatchesByLogic: Record<string, boolean> = {};
     
     try {
-      // Check recent matches for activity - scan a wider window (last 20)
-      const start = Math.max(1, matchCount - 20);
+      // Check recent matches for activity - scan only the last 10 to be safe
+      const start = Math.max(1, matchCount - 10);
       logger.info({ start, end: matchCount }, '🔍 Scanning match range');
       for (let i = start; i <= matchCount; i++) {
         try {
-          const m = await this.escrow.getMatch(i);
-          const status = Number(m.status);
-          const logic = m.gameLogic.toLowerCase();
-          const isPlayerA = m.playerA.toLowerCase() === this.wallet.address.toLowerCase();
-          const isPlayerB = m.playerB.toLowerCase() === this.wallet.address.toLowerCase();
+          const [
+            playerA, playerB, stake, gameLogic, 
+            winsA, winsB, currentRound, drawCounter, 
+            phase, status, commitDeadline, revealDeadline
+          ] = await this.escrow.getMatch(i);
           
+          let logic = gameLogic.toLowerCase();
+          
+          // IF FISE: Fetch the actual Logic ID from the fiseMatches mapping
+          if (logic === this.escrowAddress) {
+            try {
+              const fiseEscrow = new Contract(this.escrowAddress, [
+                "function fiseMatches(uint256) view returns (bytes32)"
+              ], this.provider);
+              logic = (await fiseEscrow.fiseMatches(i)).toLowerCase();
+            } catch (err) {
+              logger.warn({ matchId: i }, 'Failed to fetch FISE logic ID during scan');
+            }
+          }
+
+          const isPlayerA = playerA.toLowerCase() === this.wallet.address.toLowerCase();
+          const isPlayerB = playerB.toLowerCase() === this.wallet.address.toLowerCase();
+          const playerBIsEmpty = playerB === ethers.ZeroAddress;
+          
+          const s = Number(status);
+          const ph = Number(phase);
+
           // If we created this match and it's still OPEN, track it
-          if (status === 0 && isPlayerA) {
+          if (s === 0 && isPlayerA) {
             logger.info({ matchId: i, logic }, '⏳ Open match exists for logic');
             openByLogic[logic] = true;
           }
+          
+          // If we created this match, it's ACTIVE, but no opponent has joined yet
+          // This prevents creating multiple matches before opponent joins
+          if (s === 1 && isPlayerA && playerBIsEmpty) {
+            logger.info({ matchId: i, logic }, '⏳ Active match waiting for opponent');
+            waitingMatchesByLogic[logic] = true;
+          }
 
           // If we are a participant and match is ACTIVE, handle moves
-          if (status === 1 && (isPlayerA || isPlayerB)) {
+          if (s === 1 && (isPlayerA || isPlayerB)) {
             activeMatchesCount++;
             logger.info({ 
               matchId: i, 
-              round: Number(m.currentRound), 
-              phase: Number(m.phase),
+              round: Number(currentRound), 
+              phase: ph,
               isPlayerA,
               isPlayerB 
             }, 'Pulse: Active match detected, processing moves');
-            await this.playMatch(i, m);
+            
+            // Re-pack for playMatch
+            const mData = {
+              playerA, playerB, stake, gameLogic, 
+              winsA, winsB, currentRound, drawCounter, 
+              phase: ph, status: s, commitDeadline, revealDeadline
+            };
+            await this.playMatch(i, mData);
           }
-        } catch (err) {
-          logger.warn({ matchId: i }, 'Error fetching match data, skipping this match');
+        } catch (err: any) {
+          logger.warn({ matchId: i, error: err.message, code: err.code }, 'Error processing match, skipping');
         }
       }
     } catch (err) {
       logger.error(err, 'Critical error during match scan loop');
     }
 
-    // Ensure liquidity - ONLY if we have ZERO open matches and ZERO active matches
-    // This strictly limits Joshua to 1 game total (either waiting for opponent or playing)
-    const anyOpen = Object.values(openByLogic).some(v => v === true);
-    if (!anyOpen && activeMatchesCount === 0) {
-      logger.info('No open or active matches found. Creating single liquidity match.');
-      await this.createLiquidity(this.gameLogics[0]);
-    } else {
-      logger.info({ anyOpen, activeMatchesCount }, 'Joshua is currently busy. Skipping liquidity creation.');
+    // Ensure liquidity - Create a match for EACH logic if Joshua doesn't already have an OPEN or WAITING one
+    for (const logic of this.gameLogics) {
+      const logicLower = logic.toLowerCase();
+      if (openByLogic[logicLower]) {
+        logger.info({ logic }, 'Joshua already has an OPEN match for this logic. Skipping.');
+      } else if (waitingMatchesByLogic[logicLower]) {
+        logger.info({ logic }, 'Joshua has an ACTIVE match waiting for opponent. Skipping.');
+      } else {
+        logger.info({ logic }, 'Joshua has no open matches for this logic. Creating liquidity match.');
+        await this.createLiquidity(logic);
+      }
     }
   }
 
   async createLiquidity(logic: string) {
-    logger.info({ logic }, '💰 Calculating dynamic stake for liquidity...');
+    logger.info({ logic }, '💰 Using hardcoded stake for liquidity...');
     try {
-      // 1. Get the current minimum stake in USD from the provider
-      logger.debug('Fetching minStakeUsd...');
-      const minUsd = await this.priceProvider.getMinStakeUsd();
-      
-      // 2. Convert that USD to ETH
-      logger.debug({ minUsd: minUsd.toString() }, 'Fetching required ETH for USD amount...');
-      const requiredEth = await this.priceProvider.getEthAmount(minUsd);
-      
-      const stake = (BigInt(requiredEth) * 105n) / 100n; // 5% buffer for price fluctuations
+      // Hardcoded stake: 0.001 ETH (simplified for testing)
+      const stake = ethers.parseEther('0.001');
 
       logger.info({ 
-        minUsd: ethers.formatUnits(minUsd, 18), 
         stakeEth: ethers.formatEther(stake) 
-      }, '💰 Creating new match with dynamic stake');
+      }, '💰 Creating new match with hardcoded stake');
 
-      const tx = await this.escrow.createMatch(stake, logic, { value: stake });
+      let tx;
+      // If logic is a 32-byte hash (66 chars with 0x), it's a FISE Logic ID
+      if (logic.length === 66 && logic.startsWith('0x')) {
+        logger.info({ logicId: logic }, 'Using createFiseMatch for JS Logic');
+        tx = await this.escrow.createFiseMatch(stake, logic, { value: stake });
+      } else {
+        logger.info({ logicAddress: logic }, 'Using standard createMatch for Solidity Logic');
+        tx = await this.escrow.createMatch(stake, logic, { value: stake });
+      }
+
       logger.info({ hash: tx.hash }, 'Transaction sent, waiting for confirmation...');
       await tx.wait();
       logger.info({ hash: tx.hash, logic }, '✅ Match created successfully');
@@ -230,6 +275,32 @@ class HouseBot {
   }
 
   async getStrategicMove(opponentAddress: string, logicAddress: string): Promise<number> {
+    const logicLower = logicAddress.toLowerCase();
+    const escrowLower = this.escrowAddress.toLowerCase();
+    
+    // Check if this is a FISE match (gameLogic == escrowAddress)
+    if (logicLower === escrowLower) {
+      logger.info({ logicAddress }, '🎲 FISE match detected, using RPS JS strategy');
+      const move = Math.floor(Math.random() * 3);
+      logger.info({ move }, '🎲 Joshua picking RPS JS move (0-2)');
+      return move;
+    }
+    
+    // Check if this is the HighRollerDice JS Logic ID
+    if (logicLower === '0xada4dcc50ff30f57dba673b4868f2ed6faacefb6a8fc47fc3876ee8bc385fd47') {
+      const move = Math.floor(Math.random() * 100) + 1;
+      logger.info({ move }, '🎲 Joshua picking HighRoller move (1-100)');
+      return move;
+    }
+
+    // Check if this is the RockPaperScissorsJS Logic ID
+    if (logicLower === '0xf2f80f1811f9e2c534946f0e8ddbdbd5c1e23b6e48772afe3bccdb9f2e1cfdf3') {
+      const move = Math.floor(Math.random() * 3);
+      logger.info({ move }, '🎲 Joshua picking RPS JS move (0-2)');
+      return move;
+    }
+
+    logger.info({ logicLower }, 'Falling through to generic logic contract');
     const logicContract = new Contract(logicAddress, LOGIC_ABI, this.provider);
     const gameType = await logicContract.gameType();
     
@@ -350,8 +421,25 @@ class HouseBot {
     const round = Number(matchData.currentRound);
     const phase = Number(matchData.phase); // 0 = COMMIT, 1 = REVEAL
     const dbMatchId = this.getDbMatchId(matchId);
-
-    const status = await this.escrow.getRoundStatus(matchId, round, this.wallet.address);
+    
+    let status;
+    try {
+      // Use manual encoding to avoid ABI issues with FISE matches
+      const iface = new Interface(["function getRoundStatus(uint256 matchId, uint8 round, address player) view returns (bytes32 commitHash, bool revealed)"]);
+      const data = iface.encodeFunctionData("getRoundStatus", [matchId, round, this.wallet.address]);
+      
+      const result = await this.provider.call({
+        to: this.escrowAddress,
+        data: data
+      });
+      
+      const decoded = iface.decodeFunctionResult("getRoundStatus", result);
+      status = [decoded[0], decoded[1]];
+    } catch (err: any) {
+      logger.error({ matchId, round, error: err.message }, 'Failed to get round status');
+      throw err;
+    }
+    
     const commitHash = status[0];
     const revealed = status[1];
 
@@ -366,7 +454,7 @@ class HouseBot {
       // Hash calculation MUST match MatchEscrow.sol:
       // keccak256(abi.encodePacked("FALKEN_V1", address(this), _matchId, m.currentRound, msg.sender, _move, _salt))
       const hash = ethers.solidityPackedKeccak256(
-        ['string', 'address', 'uint256', 'uint8', 'address', 'uint8', 'bytes32'],
+        ['string', 'address', 'uint256', 'uint256', 'address', 'uint256', 'bytes32'],
         ["FALKEN_V1", this.escrowAddress, matchId, round, this.wallet.address, move, salt]
       );
 
@@ -384,16 +472,16 @@ class HouseBot {
     else if (phase === 1 && !revealed) {
       const entry = await this.saltManager.getSalt(dbMatchId, round);
       if (entry) {
-        logger.info({ matchId, round }, '🔓 Revealing move');
+        logger.info({ matchId, round, move: entry.move, salt: entry.salt }, '🔓 Revealing move');
         try {
           const tx = await this.escrow.revealMove(matchId, entry.move, entry.salt);
           await tx.wait();
           logger.info({ hash: tx.hash }, 'Reveal transaction confirmed');
-        } catch (err) {
-          logger.error(err, 'Failed to reveal move');
+        } catch (err: any) {
+          logger.error({ error: err.message, data: err.transaction?.data }, 'Failed to reveal move');
         }
       } else {
-        logger.warn({ matchId, round }, 'Missing salt for reveal, state recovery might be needed');
+        logger.warn({ matchId, round, dbMatchId }, 'Missing salt for reveal, state recovery might be needed');
       }
     }
   }

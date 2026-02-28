@@ -7,6 +7,7 @@ import { useAccount } from 'wagmi';
 import { ChevronRight, Terminal as TerminalIcon, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 interface LogEntry {
   id: string;
@@ -42,10 +43,10 @@ export function Terminal() {
     if (hasBooted.current) return;
     hasBooted.current = true;
 
+    // Initial welcome logs
     const bootSequence = [
-      { msg: 'LOADING FALKEN_OS...', type: 'SYSTEM' as const },
-      { msg: 'ESTABLISHING NEURAL_LINK...', type: 'SYSTEM' as const },
-      { msg: 'ARENA_SYNCHRONIZED. READY FOR COMMANDS.', type: 'INFO' as const },
+      { msg: 'HELLO, WELCOME TO FALKEN_OS.', type: 'SYSTEM' as const },
+      { msg: 'TYPE /HELP FOR AVAILABLE COMMANDS.', type: 'INFO' as const },
     ];
 
     bootSequence.forEach((step, i) => {
@@ -68,7 +69,7 @@ export function Terminal() {
     return () => {
       supabase.removeChannel(matchChannel);
     };
-  }, []);
+  }, [activeAddress]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -171,7 +172,7 @@ export function Terminal() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-[#050505] font-mono text-sm overflow-hidden transition-colors duration-500 shadow-[0_0_40px_rgba(59,130,246,0.05)]">
+    <div className="flex flex-col h-full bg-white dark:bg-[#050505] font-arena text-base overflow-hidden transition-colors duration-500 shadow-[0_0_40px_rgba(59,130,246,0.05)]">
       <div 
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide selection:bg-blue-500/20 dark:selection:bg-blue-500/30"
@@ -179,17 +180,17 @@ export function Terminal() {
         {logs.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-zinc-300 dark:text-zinc-800 opacity-50">
             <TerminalIcon className="w-12 h-12 mb-4" />
-            <span className="text-[10px] uppercase font-black tracking-[0.5em]">System Idle</span>
+            <span className="text-xs uppercase font-black tracking-[0.5em]">System Idle</span>
           </div>
         )}
         {logs.map((log) => (
           <div key={log.id} className="flex gap-4 items-start leading-relaxed animate-in fade-in slide-in-from-left-2 duration-300">
-            <span className="text-zinc-400 dark:text-zinc-600 font-bold tabular-nums whitespace-nowrap text-[10px] mt-1 uppercase">
+            <span className="text-zinc-400 dark:text-zinc-600 font-bold tabular-nums whitespace-nowrap text-xs mt-1 uppercase">
               [{log.timestamp}]
             </span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-2">
-                <span className={`text-[10px] font-black uppercase tracking-widest ${
+                <span className={`text-xs font-black uppercase tracking-widest ${
                   log.type === 'SYSTEM' ? 'text-blue-600 dark:text-blue-500' :
                   log.type === 'ACTION' ? 'text-purple-600 dark:text-purple-500' :
                   log.type === 'ALERT' ? 'text-amber-600 dark:text-yellow-500' :
@@ -201,12 +202,12 @@ export function Terminal() {
                 <div className="h-[1px] flex-1 bg-zinc-100 dark:bg-zinc-900/50" />
               </div>
               
-              <div className={`prose prose-invert prose-zinc max-w-none text-sm font-medium ${
+              <div className={`prose prose-sm md:prose-base dark:prose-invert prose-zinc max-w-none font-medium ${
                 log.type === 'ALERT' ? 'text-zinc-900 dark:text-white' : 
                 log.type === 'COMMAND' ? 'text-emerald-700 dark:text-green-400' :
-                'text-zinc-700 dark:text-zinc-300'
+                'text-zinc-800 dark:text-zinc-300'
               }`}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
                   {log.message}
                 </ReactMarkdown>
               </div>
@@ -216,24 +217,24 @@ export function Terminal() {
         {isProcessing && (
           <div className="flex gap-4 items-center animate-pulse py-2">
             <Loader2 className="w-3 h-3 text-blue-600 dark:text-blue-500 animate-spin" />
-            <span className="text-zinc-400 dark:text-zinc-500 italic text-xs tracking-tight font-medium">Communicating with neural sub-systems...</span>
+            <span className="text-zinc-400 dark:text-zinc-500 italic text-sm tracking-tight font-medium">Communicating with neural sub-systems...</span>
           </div>
         )}
       </div>
       
       <div className="p-4 bg-zinc-50 dark:bg-[#0a0a0a] border-t border-zinc-200 dark:border-zinc-900">
         <form onSubmit={handleCommand} className="flex items-center gap-3 group">
-          <ChevronRight className={`w-4 h-4 transition-colors ${isProcessing ? 'text-zinc-300 dark:text-zinc-800' : 'text-blue-600 dark:text-blue-500 group-focus-within:text-blue-700 dark:group-focus-within:text-blue-400'}`} />
+          <ChevronRight className={`w-5 h-5 transition-colors ${isProcessing ? 'text-zinc-300 dark:text-zinc-800' : 'text-blue-600 dark:text-blue-500 group-focus-within:text-blue-700 dark:group-focus-within:text-blue-400'}`} />
           <input 
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={isProcessing}
             placeholder={isAuthenticated ? "ENTER_COMMAND..." : "ESTABLISH_NEURAL_LINK_FIRST..."}
-            className="flex-1 bg-transparent border-none p-0 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-0 placeholder:text-zinc-300 dark:placeholder:text-zinc-800 placeholder:font-black placeholder:tracking-[0.2em] transition-all"
+            className="flex-1 bg-transparent border-none p-0 text-base text-zinc-900 dark:text-zinc-100 focus:ring-0 placeholder:text-zinc-300 dark:placeholder:text-zinc-800 placeholder:font-black placeholder:tracking-[0.2em] transition-all"
             autoFocus
           />
-          <div className={`w-2 h-4 transition-all duration-300 ${isProcessing ? 'bg-zinc-200 dark:bg-zinc-800' : 'bg-blue-600 dark:bg-blue-500 animate-pulse'}`} />
+          <div className={`w-2 h-5 transition-all duration-300 ${isProcessing ? 'bg-zinc-200 dark:bg-zinc-800' : 'bg-blue-600 dark:bg-blue-500 animate-pulse'}`} />
           <button type="submit" className="hidden" />
         </form>
       </div>

@@ -8,19 +8,15 @@ import { StatsGrid } from '@/components/StatsGrid';
 import { Leaderboard } from '@/components/Leaderboard';
 import { MatchFeed } from '@/components/MatchFeed';
 import { Terminal } from '@/components/Terminal';
-import { Terminal as TerminalIcon, Swords, Activity, Zap, ShieldCheck } from 'lucide-react';
+import { Terminal as TerminalIcon, Swords, Activity, Zap, ShieldCheck, ChevronDown } from 'lucide-react';
 
 export default function ArenaPage() {
   const { authenticated, login } = usePrivy();
   const [activeTab, setActiveTab] = useState<'terminal' | 'arena'>('terminal');
+  const [expandedModule, setExpandedModule] = useState<'rankings' | 'registry' | null>('rankings');
 
   return (
-    <main className="h-screen w-screen overflow-hidden flex flex-col bg-zinc-50 dark:bg-[#050505] text-zinc-600 dark:text-zinc-400 font-mono p-4 gap-4 transition-colors duration-500">
-      {/* Top Navigation */}
-      <div className="flex-none">
-        <Navbar />
-      </div>
-
+    <main className="h-screen w-screen overflow-hidden flex flex-col bg-zinc-50 dark:bg-[#050505] text-zinc-600 dark:text-zinc-400 font-arena text-base p-4 gap-4 transition-colors duration-500">
       {/* Beta Disclaimer Banner */}
       <div className="flex-none px-4 py-3 bg-emerald-600/5 dark:bg-emerald-500/5 border border-emerald-600/10 dark:border-emerald-500/20 rounded-xl flex items-center justify-between transition-colors">
         <div className="flex items-center gap-3">
@@ -35,20 +31,52 @@ export default function ArenaPage() {
         </div>
       </div>
 
+      <div className="flex-none">
+        <Navbar />
+      </div>
+
       {/* Main Command Center Grid */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4">
         
-        {/* Left Column: Intelligence Lens (Rankings) [3 Cols] */}
-        <div className="lg:col-span-3 border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-[#05070a] rounded-xl flex flex-col min-h-0 shadow-sm dark:shadow-2xl overflow-hidden transition-colors">
-          <div className="flex-none px-4 py-4 bg-zinc-100/50 dark:bg-blue-900/10 border-b border-zinc-200 dark:border-zinc-900 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-500" />
-              <span className="text-xs font-mono font-black uppercase tracking-[0.3em] text-blue-600 dark:text-gold">Intelligence_Lens</span>
+        {/* Left Column: Multi-Module Lens [3 Cols] */}
+        <div className="lg:col-span-3 flex flex-col gap-4 min-h-0">
+          
+          {/* Module: Leaderboard (The Blue Zone) */}
+          <div className={`flex flex-col border transition-all duration-500 rounded-xl overflow-hidden bg-blue-600/[0.05] dark:bg-blue-600/[0.08] ${expandedModule === 'rankings' ? 'flex-[2] border-blue-600/30 dark:border-blue-500/30 shadow-sm dark:shadow-[0_0_50px_rgba(37,99,235,0.15)]' : 'flex-none h-14 border-zinc-200 dark:border-zinc-900'}`}>
+            <button 
+              onClick={() => setExpandedModule(expandedModule === 'rankings' ? null : 'rankings')}
+              className={`flex-none px-4 py-5 border-b transition-colors flex items-center justify-between group ${expandedModule === 'rankings' ? 'bg-blue-600/20 dark:bg-blue-600/20 border-blue-600/30 dark:border-blue-500/30' : 'bg-blue-600/10 dark:bg-blue-900/20 border-blue-600/20 dark:border-blue-900'}`}
+            >
+              <div className="flex items-center gap-3">
+                <ShieldCheck className={`w-5 h-5 transition-colors ${expandedModule === 'rankings' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-400'}`} />
+                <span className="text-base font-arena font-black uppercase tracking-[0.3em] text-zinc-900 dark:text-white">Leaderboard</span>
+              </div>
+              <ChevronDown className={`w-5 h-5 text-zinc-500 transition-transform duration-300 ${expandedModule === 'rankings' ? 'rotate-180' : ''}`} />
+            </button>
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+              <Leaderboard />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar dark:bg-blue-600/10">
-            <Leaderboard />
+
+          {/* Module: App Store (The Purple Zone) */}
+          <div className={`flex flex-col border transition-all duration-500 rounded-xl overflow-hidden bg-purple-600/[0.05] dark:bg-purple-600/[0.08] ${expandedModule === 'registry' ? 'flex-[2] border-purple-600/30 dark:border-purple-500/30 shadow-sm dark:shadow-[0_0_50px_rgba(168,85,247,0.15)]' : 'flex-none h-14 border-purple-600/20 dark:border-zinc-900'}`}>
+            <button 
+              onClick={() => setExpandedModule(expandedModule === 'registry' ? null : 'registry')}
+              className={`flex-none px-4 py-5 border-b transition-colors flex items-center justify-between group ${expandedModule === 'registry' ? 'bg-purple-600/20 dark:bg-purple-600/20 border-purple-600/30 dark:border-purple-500/30' : 'bg-purple-600/10 dark:bg-zinc-900/20 border-purple-600/20 dark:border-zinc-900'}`}
+            >
+              <div className="flex items-center gap-3">
+                <Zap className={`w-5 h-5 transition-colors ${expandedModule === 'registry' ? 'text-purple-600 dark:text-purple-400' : 'text-zinc-400'}`} />
+                <span className="text-base font-arena font-black uppercase tracking-[0.3em] text-zinc-900 dark:text-white">App Store</span>
+              </div>
+              <ChevronDown className={`w-5 h-5 text-zinc-500 transition-transform duration-300 ${expandedModule === 'registry' ? 'rotate-180' : ''}`} />
+            </button>
+            <div className="flex-1 p-4 flex flex-col items-center justify-center text-center space-y-4">
+              <p className="text-xs font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-300">Querying_Onchain_Logic_Store...</p>
+              <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
+              <button className="text-xs font-black text-purple-600 dark:text-purple-400 uppercase tracking-tighter hover:underline">Explore_FISE_Library</button>
+            </div>
           </div>
+
         </div>
 
         {/* Center Column: The Primary Feed [6 Cols] */}
@@ -57,17 +85,17 @@ export default function ArenaPage() {
             <div className="flex gap-6">
               <button 
                 onClick={() => setActiveTab('terminal')}
-                className={`flex items-center gap-3 text-xs font-mono font-black tracking-[0.3em] uppercase transition-all ${activeTab === 'terminal' ? 'text-blue-600 dark:text-gold underline underline-offset-4 decoration-blue-500/50' : 'text-zinc-400 dark:text-zinc-600 hover:text-blue-600 dark:hover:text-gold'}`}
+                className={`flex items-center gap-3 text-sm font-arena font-black tracking-[0.3em] uppercase transition-all ${activeTab === 'terminal' ? 'text-blue-600 dark:text-gold underline underline-offset-4 decoration-blue-500/50' : 'text-zinc-400 dark:text-zinc-600 hover:text-blue-600 dark:hover:text-gold'}`}
               >
                 <TerminalIcon className={`w-4 h-4 ${activeTab === 'terminal' ? 'text-blue-600 dark:text-blue-500' : 'text-zinc-300 dark:text-zinc-700'}`} />
-                Intelligence_Terminal
+                Terminal
               </button>
               <button 
                 onClick={() => setActiveTab('arena')}
-                className={`flex items-center gap-3 text-xs font-mono font-black tracking-[0.3em] uppercase transition-all ${activeTab === 'arena' ? 'text-blue-600 dark:text-gold underline underline-offset-4 decoration-blue-500/50' : 'text-zinc-400 dark:text-zinc-600 hover:text-blue-600 dark:hover:text-gold'}`}
+                className={`flex items-center gap-3 text-sm font-arena font-black tracking-[0.3em] uppercase transition-all ${activeTab === 'arena' ? 'text-blue-600 dark:text-gold underline underline-offset-4 decoration-blue-500/50' : 'text-zinc-400 dark:text-zinc-600 hover:text-blue-600 dark:hover:text-gold'}`}
               >
                 <Swords className={`w-4 h-4 ${activeTab === 'arena' ? 'text-blue-600 dark:text-blue-500' : 'text-zinc-300 dark:text-zinc-700'}`} />
-                Engagement_Feed
+                Live_Matches
               </button>
             </div>
             <div className="flex items-center gap-3">
@@ -95,9 +123,9 @@ export default function ArenaPage() {
           
           {/* Module: Network Telemetry */}
           <div className="flex-1 border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-[#080808] rounded-xl flex flex-col min-h-0 shadow-sm dark:shadow-2xl overflow-hidden transition-colors">
-            <div className="flex-none px-4 py-4 bg-zinc-100/50 dark:bg-zinc-900/20 border-b border-zinc-200 dark:border-zinc-900 flex items-center gap-3">
-              <Activity className="w-4 h-4 text-blue-600 dark:text-blue-500" />
-              <span className="text-xs font-mono font-black uppercase tracking-[0.3em] text-blue-600 dark:text-gold">Global_Telemetry</span>
+            <div className="flex-none px-4 py-5 bg-zinc-100/50 dark:bg-zinc-900/20 border-b border-zinc-200 dark:border-zinc-900 flex items-center gap-3">
+              <Activity className="w-5 h-5 text-blue-600 dark:text-blue-500" />
+              <span className="text-xs font-arena font-black uppercase tracking-[0.3em] text-zinc-900 dark:text-white">Global_Telemetry</span>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar dark:bg-blue-600/10">
               <StatsGrid />

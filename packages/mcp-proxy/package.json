@@ -19,7 +19,7 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "mcp-server": "workspace:*",
-    "shared-types": "workspace:*"
+    "@falken/shared-types": "workspace:*"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

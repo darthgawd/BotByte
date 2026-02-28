@@ -28,6 +28,8 @@ const ESCROW_ABI = [
   { name: 'MoveRevealed', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'roundNumber', type: 'uint8', indexed: false }, { name: 'player', type: 'address', indexed: true }, { name: 'move', type: 'uint8', indexed: false }] },
   { name: 'RoundResolved', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'roundNumber', type: 'uint8', indexed: false }, { name: 'winner', type: 'uint8', indexed: false }] },
   { name: 'MatchSettled', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'winner', type: 'address', indexed: true }, { name: 'payout', type: 'uint256', indexed: false }] },
+  { name: 'FiseMatchCreated', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'logicId', type: 'bytes32', indexed: true }] },
+  { name: 'MatchVoided', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'reason', type: 'string', indexed: false }] },
   { name: 'TimeoutClaimed', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'roundNumber', type: 'uint8', indexed: false }, { name: 'claimer', type: 'address', indexed: true }] },
   { name: 'WithdrawalQueued', type: 'event', inputs: [{ name: 'recipient', type: 'address', indexed: true }, { name: 'amount', type: 'uint256', indexed: false }] },
   { name: 'GameLogicApproved', type: 'event', inputs: [{ name: 'logic', type: 'address', indexed: true }, { name: 'approved', type: 'bool', indexed: false }] },
@@ -137,17 +139,21 @@ async function ensureMatchExists(mId: string, onChainId: bigint) {
 }
 
 async function main() {
+  console.log('Main function starting...');
   const { data: syncState } = await supabase.from('sync_state').select('last_processed_block').eq('id', 'indexer_main').single();
   const startBlockEnv = process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : 0n;
   const fromBlock = BigInt(syncState?.last_processed_block || startBlockEnv);
   const currentBlock = await publicClient.getBlockNumber();
   
-  logger.info({ fromBlock, currentBlock }, 'Indexer starting...');
+  logger.info({ fromBlock, currentBlock, escrow: ESCROW_ADDRESS }, 'Indexer starting...');
+  console.log(`Syncing from ${fromBlock} to ${currentBlock} on escrow ${ESCROW_ADDRESS}`);
 
   const handleLogs = async (logs: any[]) => {
+    console.log(`Received ${logs.length} logs`);
     const parsedLogs = parseEventLogs({ abi: ESCROW_ABI, logs });
     let lastBlock = 0n;
     for (const log of parsedLogs) {
+      console.log(`Processing event: ${log.eventName} at block ${log.blockNumber}`);
       const logId = `${log.blockHash}-${log.logIndex}`;
       if (log.removed) continue;
       if (processedLogIds.has(logId)) continue;
@@ -156,6 +162,7 @@ async function main() {
       if (log.blockNumber > lastBlock) lastBlock = log.blockNumber;
     }
     if (lastBlock > 0n) {
+      console.log(`Updating sync_state to ${lastBlock}`);
       await supabase.from('sync_state').upsert({ id: 'indexer_main', last_processed_block: Number(lastBlock) });
     }
   };
@@ -164,13 +171,16 @@ async function main() {
     let cursor = fromBlock + 1n;
     while (cursor <= currentBlock) {
       const toChunk = cursor + BACKFILL_CHUNK - 1n < currentBlock ? cursor + BACKFILL_CHUNK - 1n : currentBlock;
+      console.log(`Fetching logs from ${cursor} to ${toChunk}...`);
       const logs = await withRetry(() => publicClient.getLogs({ address: ESCROW_ADDRESS as `0x${string}`, fromBlock: cursor, toBlock: toChunk })) as any[];
+      console.log(`Fetched ${logs.length} raw logs`);
       await handleLogs(logs);
       cursor = toChunk + 1n;
       await new Promise(r => setTimeout(r, 500));
     }
   }
 
+  console.log('Switching to watch mode...');
   publicClient.watchEvent({ address: ESCROW_ADDRESS as `0x${string}`, onLogs: handleLogs });
 }
 
@@ -194,6 +204,16 @@ async function processLog(log: any) {
       wins_a: 0,
       wins_b: 0
     });
+  } else if (eventName === 'FiseMatchCreated') {
+    await supabase.from('matches').update({ 
+      game_logic: args.logicId.toLowerCase(),
+      is_fise: true 
+    }).eq('match_id', mId);
+  } else if (eventName === 'MatchVoided') {
+    await supabase.from('matches').update({ 
+      status: 'VOIDED',
+      phase: 'COMPLETE'
+    }).eq('match_id', mId);
   } else if (eventName === 'MatchJoined') {
     const ts = await getBlockTimestamp(blockNumber);
     await supabase.from('matches').update({ 
