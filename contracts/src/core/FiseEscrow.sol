@@ -8,6 +8,8 @@ import "./LogicRegistry.sol";
  * @title FiseEscrow
  * @dev Extension of MatchEscrow to support the Falken Immutable Scripting Engine (FISE).
  * Allows match settlement via authorized off-chain Referees (Falken VM).
+ * 
+ * Multi-Round Support: Best-of-5 (first to 3 wins), draws replay up to 3 times.
  */
 contract FiseEscrow is MatchEscrow {
     
@@ -16,6 +18,9 @@ contract FiseEscrow is MatchEscrow {
 
     // Mapping from matchId to the FISE Logic ID (IPFS CID Hash)
     mapping(uint256 => bytes32) public fiseMatches;
+
+    // Wins required for FISE matches (best-of-5 = first to 3)
+    uint8 public constant FISE_WINS_REQUIRED = 3;
 
     event FiseMatchCreated(uint256 indexed matchId, bytes32 indexed logicId);
     event RefereeChanged(address indexed oldReferee, address indexed newReferee);
@@ -90,18 +95,14 @@ contract FiseEscrow is MatchEscrow {
 
     /**
      * @dev Override _resolveRound to prevent automatic resolution for FISE matches.
-     * FISE matches are resolved off-chain by the Falken VM via settleFiseMatch.
+     * FISE matches are resolved round-by-round via resolveFiseRound() called by the Falken VM.
      */
     function _resolveRound(uint256 matchId) internal override {
         Match storage m = matches[matchId];
         
-        // If this is a FISE match (gameLogic == address(this)), skip on-chain resolution
-        // The Falken VM will call settleFiseMatch() to settle the match
+        // If this is a FISE match, do nothing here.
+        // The Falken VM will call resolveFiseRound() after each round.
         if (m.gameLogic == address(this)) {
-            // Mark both players as not revealed so they can play next round
-            // or the referee can settle the match
-            // For now, we just emit an event and wait for referee settlement
-            emit RoundResolved(matchId, m.currentRound, 0); // 0 = pending/off-chain resolution
             return;
         }
         
@@ -110,18 +111,79 @@ contract FiseEscrow is MatchEscrow {
     }
 
     /**
-     * @dev Settles a FISE match after off-chain validation by the Falken VM.
-     * Only the authorized Referee can trigger the final payout.
-     * Implements a 5% total rake: 3% to Treasury, 2% to Game Developer.
+     * @dev Resolves a single FISE round. Called by Referee after off-chain evaluation.
+     * Mirrors MatchEscrow._resolveRound() but with winner determined off-chain.
+     * 
+     * @param matchId The match ID
+     * @param roundWinner 0=draw, 1=playerA wins, 2=playerB wins
      */
-    function settleFiseMatch(uint256 matchId, address winner) external onlyReferee nonReentrant {
+    function resolveFiseRound(uint256 matchId, uint8 roundWinner) external onlyReferee nonReentrant {
         Match storage m = matches[matchId];
         require(m.status == MatchStatus.ACTIVE, "Match not active");
         require(m.gameLogic == address(this), "Not a FISE match");
+        require(roundWinner <= 2, "Invalid winner"); // 0=draw, 1=A, 2=B
+        require(m.phase == Phase.REVEAL, "Not in reveal phase");
 
-        // --- EFFECTS (Update state before interactions) ---
+        // Update wins/draws (mirrors MatchEscrow._resolveRound)
+        if (roundWinner == 1) {
+            m.winsA++;
+            m.drawCounter = 0;
+        } else if (roundWinner == 2) {
+            m.winsB++;
+            m.drawCounter = 0;
+        } else {
+            m.drawCounter++;
+        }
+
+        emit RoundResolved(matchId, m.currentRound, roundWinner);
+
+        // Cleanup round storage
+        delete roundCommits[matchId][m.currentRound][m.playerA];
+        delete roundCommits[matchId][m.currentRound][m.playerB];
+
+        // Check for match winner (first to 3)
+        if (m.winsA >= FISE_WINS_REQUIRED || m.winsB >= FISE_WINS_REQUIRED) {
+            _settleFiseMatchInternal(matchId);
+            return;
+        }
+
+        // Handle round progression
+        if (roundWinner == 0) {
+            // Draw — replay same round, up to 3 consecutive draws
+            if (m.drawCounter >= 3) {
+                // Sudden death limit reached, check max rounds
+                if (m.currentRound >= MAX_ROUNDS) {
+                    _settleFiseMatchInternal(matchId);
+                    return;
+                }
+                // Advance to next round, reset draw counter
+                m.currentRound++;
+                m.drawCounter = 0;
+            }
+            // Else: stay on same round (sudden death replay)
+        } else {
+            // Non-draw — advance to next round
+            if (m.currentRound >= MAX_ROUNDS) {
+                _settleFiseMatchInternal(matchId);
+                return;
+            }
+            m.currentRound++;
+        }
+
+        // Reset for next round
+        m.phase = Phase.COMMIT;
+        m.commitDeadline = block.timestamp + COMMIT_WINDOW;
+        emit RoundStarted(matchId, m.currentRound);
+    }
+
+    /**
+     * @dev Internal FISE settlement with developer royalties.
+     * Called automatically when first-to-3 is reached or max rounds exceeded.
+     */
+    function _settleFiseMatchInternal(uint256 matchId) internal {
+        Match storage m = matches[matchId];
         m.status = MatchStatus.SETTLED;
-        m.phase = Phase.REVEAL; // Mark as finished
+        m.phase = Phase.REVEAL; // Mark finished
 
         bytes32 logicId = fiseMatches[matchId];
         uint256 totalPot = m.stake * 2;
@@ -132,23 +194,64 @@ contract FiseEscrow is MatchEscrow {
         // 2. Record volume in registry
         logicRegistry.recordVolume(logicId, totalPot);
 
-        // --- INTERACTIONS ---
+        // 3. Execute payouts
+        if (m.winsA == m.winsB) {
+            // Draw — refund both
+            _safeTransfer(m.playerA, m.stake);
+            _safeTransfer(m.playerB, m.stake);
+            emit MatchSettled(matchId, address(0), m.stake);
+        } else {
+            address winner = m.winsA > m.winsB ? m.playerA : m.playerB;
+            uint256 totalRake = (totalPot * RAKE_BPS) / 10000;
+            uint256 royalty = (totalPot * 200) / 10000; // 2% Royalty
+            uint256 protocolFee = totalRake - royalty;  // 3% Protocol
+            uint256 payout = totalPot - totalRake;
+
+            _safeTransfer(treasury, protocolFee);
+            _safeTransfer(developer, royalty);
+            _safeTransfer(winner, payout);
+
+            emit MatchSettled(matchId, winner, payout);
+        }
+    }
+
+    /**
+     * @dev Legacy settle function for single-round FISE matches.
+     * Can also be used to settle multi-round matches early (e.g., timeout, forfeit).
+     * Only the authorized Referee can trigger settlement.
+     */
+    function settleFiseMatch(uint256 matchId, address winner) external onlyReferee nonReentrant {
+        Match storage m = matches[matchId];
+        require(m.status == MatchStatus.ACTIVE, "Match not active");
+        require(m.gameLogic == address(this), "Not a FISE match");
+
+        // Update state
+        m.status = MatchStatus.SETTLED;
+        m.phase = Phase.REVEAL;
+
+        bytes32 logicId = fiseMatches[matchId];
+        uint256 totalPot = m.stake * 2;
+
+        // Get Developer Info
+        (, address developer,,,) = logicRegistry.registry(logicId);
+
+        // Record volume
+        logicRegistry.recordVolume(logicId, totalPot);
+
+        // Execute payouts
         if (winner == address(0)) {
             // Draw: Refund players
             _safeTransfer(m.playerA, m.stake);
             _safeTransfer(m.playerB, m.stake);
             emit MatchSettled(matchId, address(0), m.stake);
         } else {
-            // Winner takes pot minus rake (5%)
             require(winner == m.playerA || winner == m.playerB, "Invalid winner");
             
-            uint256 totalRake = (totalPot * RAKE_BPS) / 10000; // 5%
-            uint256 royalty = (totalPot * 200) / 10000;        // 2% Royalty
-            uint256 protocolFee = totalRake - royalty;         // 3% Protocol
-            
+            uint256 totalRake = (totalPot * RAKE_BPS) / 10000;
+            uint256 royalty = (totalPot * 200) / 10000;
+            uint256 protocolFee = totalRake - royalty;
             uint256 payout = totalPot - totalRake;
 
-            // Three-Way Payout Execution
             _safeTransfer(treasury, protocolFee);
             _safeTransfer(developer, royalty);
             _safeTransfer(winner, payout);

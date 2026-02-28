@@ -1,6 +1,6 @@
 import { createPublicClient, http } from 'viem';
 import { baseSepolia } from 'viem/chains';
-import { Referee } from './Referee.js';
+import { Referee, RoundWinner } from './Referee.js';
 import { Reconstructor } from './Reconstructor.js';
 import { Settler } from './Settler.js';
 import { Fetcher } from './Fetcher.js';
@@ -37,6 +37,17 @@ const LOGIC_REGISTRY_ABI = [
   }
 ] as const;
 
+/**
+ * Falken Watcher
+ * Monitors blockchain events and triggers round resolution.
+ * 
+ * Multi-Round Support:
+ * - Listens for MoveRevealed events
+ * - Waits for both players to reveal
+ * - Calls Referee to determine round winner (0/1/2)
+ * - Calls Settler.resolveRound() to update on-chain scores
+ * - Contract auto-advances rounds until first-to-3 or max rounds
+ */
 export class Watcher {
   private client = createPublicClient({
     chain: baseSepolia,
@@ -148,39 +159,69 @@ export class Watcher {
             else state.rounds[move.round].b = move.moveData;
             const r = state.rounds[move.round];
             if (r.a !== undefined && r.b !== undefined) {
-              if (r.a === 1 && r.b === 3) state.score += 1;
-              else if (r.a === 3 && r.b === 1) state.score -= 1;
+              // Rock(0) beats Scissors(2), Paper(1) beats Rock(0), Scissors(2) beats Paper(1)
+              if (r.a === r.b) return state; // Draw
+              if ((r.a === 0 && r.b === 2) || (r.a === 1 && r.b === 0) || (r.a === 2 && r.b === 1)) {
+                state.score += 1;
+              } else {
+                state.score -= 1;
+              }
             }
             return state;
           }
           checkResult(state) {
-            if (state.score >= 1) return 1;
-            if (state.score <= -1) return 2;
-            return 0;
+            if (state.score > 0) return 1;  // Player A wins
+            if (state.score < 0) return 2;  // Player B wins
+            return 0; // Draw
           }
         }`;
       }
 
-      const winner = await this.referee.resolveMatch(jsCode, context, moves);
-      logger.info({ dbMatchId, winner }, 'JUDGMENT_RENDERED');
+      // Multi-Round: Resolve current round (returns 0, 1, or 2)
+      const roundWinner: RoundWinner = await this.referee.resolveRound(jsCode, context, moves);
+      const moveRound = moves[0]?.round || 1;
+      logger.info({ dbMatchId, roundWinner, round: moveRound }, 'ROUND_JUDGMENT_RENDERED');
 
       if (dbMatchId.startsWith('test-fise')) {
         // SIMULATION SETTLEMENT (Direct DB Update)
+        // For simulation, we track wins in the match record
+        const { data: matchData } = await this.reconstructor.supabase
+          .from('matches')
+          .select('wins_a, wins_b, current_round')
+          .eq('match_id', dbMatchId)
+          .single();
+        
+        let winsA = (matchData?.wins_a || 0);
+        let winsB = (matchData?.wins_b || 0);
+        let currentRound = (matchData?.current_round || 1);
+        
+        if (roundWinner === 1) winsA++;
+        else if (roundWinner === 2) winsB++;
+        
+        // Check for match completion (first to 3)
+        const isComplete = winsA >= 3 || winsB >= 3 || currentRound >= 5;
+        const winner = winsA > winsB ? context.playerA : (winsB > winsA ? context.playerB : null);
+        
         const { error } = await this.reconstructor.supabase
           .from('matches')
           .update({
-            status: 'SETTLED',
-            winner: winner,
-            phase: 'COMPLETE'
+            status: isComplete ? 'SETTLED' : 'ACTIVE',
+            phase: isComplete ? 'COMPLETE' : 'COMMIT',
+            winner: isComplete ? winner : null,
+            wins_a: winsA,
+            wins_b: winsB,
+            current_round: isComplete ? currentRound : currentRound + 1
           })
           .eq('match_id', dbMatchId);
 
         if (error) logger.error({ dbMatchId, error }, 'SIMULATION_DB_UPDATE_FAILED');
-        else logger.info({ dbMatchId }, 'SIMULATION_SETTLED_IN_DB');
+        else logger.info({ dbMatchId, roundWinner, winsA, winsB, isComplete }, 'SIMULATION_ROUND_RESOLVED');
       } else {
-        // REAL ON-CHAIN SETTLEMENT (winner address or null for draw)
+        // REAL ON-CHAIN ROUND RESOLUTION
+        // Call resolveFiseRound(matchId, roundWinner) 
+        // Contract will update wins, check for first-to-3, advance round or settle
         const onChainMatchId = BigInt(dbMatchId.split('-').pop() || '0');
-        await this.settler.settle(escrowAddress, onChainMatchId, (winner || '0x0000000000000000000000000000000000000000') as `0x${string}`);
+        await this.settler.resolveRound(escrowAddress, onChainMatchId, roundWinner);
       }
     } catch (err: any) {
       logger.error({ dbMatchId, err: err.message }, 'VM_PROCESSING_FAULT');

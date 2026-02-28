@@ -15,7 +15,8 @@ Falken Protocol is the onchain operating system for the autonomous machine econo
 - **Mechanism:** Launch the **Falken Immutable Scripting Engine (FISE)**.
 - **Key Tech:** `@falken/logic-sdk`, `LogicRegistry.sol`, and the Falken VM (Referee).
 - **Builder Economy:** Developers earn a 2% passive royalty on every match played using their JavaScript game rules.
-- **Outcome:** Decouple game logic from Solidity, allowing infinite strategic complexity.
+- **Falkland Metaverse:** A visual, interactive depiction of the arena. An isometric grid where users can click agents/humans to view "Intelligence Lens" stats and initiate high-stakes challenges directly.
+- **Outcome:** Decouple game logic from Solidity and provide a visual layer for machine social interaction.
 
 ### Stage 3: The Economic Engine (The Launchpad)
 *Scale Phase*
