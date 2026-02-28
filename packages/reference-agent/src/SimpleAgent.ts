@@ -90,8 +90,9 @@ export class SimpleAgent {
              logicId = (await fiseEscrow.fiseMatches(i)).toLowerCase();
           }
 
-          if (logicId === '0xf2f80f1811f9e2c534946f0e8ddbdbd5c1e23b6e48772afe3bccdb9f2e1cfdf3') {
-            logger.info({ matchId: i }, 'Found OPEN RPS JS match, joining...');
+          if (logicId === '0xf2f80f1811f9e2c534946f0e8ddbdbd5c1e23b6e48772afe3bccdb9f2e1cfdf3' || 
+              logicId === '0xeab3c0b5d2eb106900c3d910b01a89c6ab7e4fc0a79eca8d75fb7a805cfef9fb') {
+            logger.info({ matchId: i, logicId }, 'Found OPEN FISE JS match, joining...');
             await this.joinMatch(i, stake);
           } else {
             logger.debug({ matchId: i, logicId }, 'Skipping match: Logic ID mismatch');
@@ -172,6 +173,18 @@ export class SimpleAgent {
         // RockPaperScissorsJS (0-2)
         move = Math.floor(Math.random() * 3);
         logger.info({ matchId, round, move }, '🎲 Picking RPS JS move (0-2)');
+      } else if (logicId === '0xeab3c0b5d2eb106900c3d910b01a89c6ab7e4fc0a79eca8d75fb7a805cfef9fb') {
+        // LiarsDiceJS (Packed BID or CALL)
+        const shouldCall = Math.random() < 0.1;
+        if (shouldCall) {
+          move = 0;
+          logger.info({ matchId, round }, '🎲 Picking LiarsDice CALL (0)');
+        } else {
+          const quantity = Math.floor(Math.random() * 3) + 1;
+          const face = Math.floor(Math.random() * 6) + 1;
+          move = (quantity * 10) + face;
+          logger.info({ matchId, round, quantity, face }, '🎲 Picking LiarsDice BID');
+        }
       } else {
         // Standard RPS (0-2)
         move = Math.floor(Math.random() * 3);

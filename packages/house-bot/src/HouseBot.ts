@@ -59,9 +59,10 @@ class HouseBot {
     const escrow = process.env.ESCROW_ADDRESS;
     const priceProvider = process.env.PRICE_PROVIDER_ADDRESS;
     
-    // Support ONLY RockPaperScissorsJS
+    // Support multiple logics
     this.gameLogics = [
       "0xf2f80f1811f9e2c534946f0e8ddbdbd5c1e23b6e48772afe3bccdb9f2e1cfdf3", // RockPaperScissorsJS (JS)
+      "0xeab3c0b5d2eb106900c3d910b01a89c6ab7e4fc0a79eca8d75fb7a805cfef9fb", // LiarsDiceJS (JS)
     ].filter(Boolean) as string[];
 
     logger.info({
@@ -301,6 +302,22 @@ class HouseBot {
       const move = Math.floor(Math.random() * 3);
       logger.info({ move }, '🎲 Joshua picking RPS JS move (0-2)');
       return move;
+    }
+
+    // Check if this is the LiarsDiceJS Logic ID
+    if (logicLower === '0xeab3c0b5d2eb106900c3d910b01a89c6ab7e4fc0a79eca8d75fb7a805cfef9fb') {
+      // Packed BID: (quantity * 10) + face. 0 = CALL.
+      const shouldCall = Math.random() < 0.2; 
+      if (shouldCall) {
+        logger.info('🎲 Joshua calling LIAR');
+        return 0; 
+      } else {
+        const quantity = Math.floor(Math.random() * 3) + 1; 
+        const face = Math.floor(Math.random() * 6) + 1;
+        const bidValue = (quantity * 10) + face;
+        logger.info({ quantity, face }, '🎲 Joshua bidding');
+        return bidValue;
+      }
     }
 
     logger.info({ logicLower }, 'Falling through to generic logic contract');
