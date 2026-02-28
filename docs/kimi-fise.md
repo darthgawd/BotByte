@@ -5,7 +5,7 @@
 FISE (Falken Immutable Scripting Engine) allows JavaScript-based games to be played on-chain. This document provides the complete implementation guide including all fixes, contract changes, and deployment steps.
 
 **Last Updated**: 2026-02-28
-**Status**: ✅ OPERATIONAL (single-round) | ✅ IMPLEMENTED: Best-of-5 multi-round contract | 🔧 NEXT: Deploy and test multi-round
+**Status**: ✅ OPERATIONAL: Best-of-5 multi-round FISE (deployed & verified on Base Sepolia)
 
 ---
 
@@ -13,7 +13,8 @@ FISE (Falken Immutable Scripting Engine) allows JavaScript-based games to be pla
 
 | Contract | Address | Status |
 |----------|---------|--------|
-| **FiseEscrow** | `0xE155B0F15dfB5D65364bca23a08501c7384eb737` | ✅ Live (single-round) |
+| **FiseEscrow** | `0x8e8048213960b8a1126cB56FaF8085DccE35DAc0` | ✅ Live (multi-round, best-of-5) |
+| **FiseEscrow (legacy)** | `0xE155B0F15dfB5D65364bca23a08501c7384eb737` | ⛔ Deprecated (single-round) |
 | **Logic Registry** | `0xc87d466e9F2240b1d7caB99431D1C80a608268Df` | ✅ Live |
 | **Price Provider** | `0xFd2f3194b866DbE7115447B6b79C0972CcEDE3Ca` | ✅ Live |
 | **RPS Logic ID** | `0xf2f80f1811f9e2c534946f0e8ddbdbd5c1e23b6e48772afe3bccdb9f2e1cfdf3` | ✅ Registered |
@@ -25,7 +26,144 @@ FISE (Falken Immutable Scripting Engine) allows JavaScript-based games to be pla
 
 ---
 
-## Recent Fixes Applied (2026-02-28)
+## Recent Fixes Applied (2026-02-28) — Multi-Round Watcher/Referee
+
+### Fix 11: Watcher Current-Round Move Filtering ✅
+
+**Problem**: `waitForCompleteMatchData()` checked `result.moves.length >= 2` against ALL rounds' moves. In round 2+, old round 1 moves (2 moves) immediately satisfied the check, causing the Watcher to resolve with stale data before both players had revealed for the current round.
+
+**File**: `packages/falken-vm/src/Watcher.ts`
+
+**Solution**: Query `current_round` from the matches table and filter moves to only the current round:
+```typescript
+const { data: matchData } = await this.reconstructor.supabase
+  .from('matches').select('current_round').eq('match_id', dbMatchId).single();
+const currentRound = matchData?.current_round || 1;
+const currentRoundMoves = result.moves.filter((m: any) => m.round === currentRound);
+if (currentRoundMoves.length >= 2) {
+  return { context: result.context, moves: currentRoundMoves };
+}
+```
+
+### Fix 12: Watcher Duplicate Processing Lock ✅
+
+**Problem**: `MoveRevealed` fires once per player (2 events per round). Both events triggered `processMatch()`. The first one resolved the round, but the second tried to resolve the same round again → "Not in reveal phase" revert (contract already advanced to COMMIT).
+
+**File**: `packages/falken-vm/src/Watcher.ts`
+
+**Solution**: Added `processingLocks` set to prevent concurrent processing of the same match:
+```typescript
+private processingLocks = new Set<string>();
+
+private async processMatch(dbMatchId, ...) {
+  if (this.processingLocks.has(dbMatchId)) {
+    logger.info({ dbMatchId }, 'ALREADY_PROCESSING // SKIPPING_DUPLICATE');
+    return;
+  }
+  this.processingLocks.add(dbMatchId);
+  try { /* ... */ } finally { this.processingLocks.delete(dbMatchId); }
+}
+```
+
+### Fix 13: Referee Round Number Normalization ✅
+
+**Problem**: The deployed IPFS game logic (CID: `QmcaiTUUvVHQ6oLz61R2AYbaZMJPmZYeoN3N4cBxuXSXQs`) has a `processMove` guard: `if (move.round !== state.round) return state`. The game's `init()` sets `state.round = 1`. When the Referee passes moves with `round: 2` (or higher), `processMove` silently rejects them, score never changes, and the result is always 0 (draw). This caused every round 2+ to be resolved as a draw, keeping the match stuck.
+
+**File**: `packages/falken-vm/src/Referee.ts`
+
+**Root Cause**: The Referee creates fresh game state per resolution (`game.init()` → `state.round=1`), but passes moves with their actual round numbers. The IPFS logic filters by `state.round`, so only round 1 moves are ever processed.
+
+**Solution**: Normalize all move round numbers to 1 before passing to the game logic:
+```typescript
+// Normalize moves to round 1 for per-round resolution.
+// Game logic init() sets state.round=1 and processMove skips moves
+// where move.round !== state.round.
+const normalizedMoves = moves.map(m => ({ ...m, round: 1 }));
+const result = runLogic(context, normalizedMoves);
+```
+
+Also reverted the score-delta approach (Fix 13a) since the IPFS logic doesn't use `scoreA`/`score` — it uses `state.result` and `checkResult()` returns the round winner directly (0=pending, 1=A wins, 2=B wins, 3=draw).
+
+### Fix 14: Referee GameResult.DRAW Handling ✅
+
+**Problem**: The IPFS logic's `checkResult()` returns `3` for draws (`GameResult.DRAW = 3`). The Referee's `normalizeResult()` only handled 0, 1, 2 — value 3 fell through to "unrecognized result, defaulting to draw" (which happened to be correct, but was fragile and logged a warning).
+
+**File**: `packages/falken-vm/src/Referee.ts`
+
+**Solution**: Added explicit handling for `GameResult.DRAW = 3`:
+```typescript
+private normalizeResult(result: any, context: MatchContext): RoundWinner {
+  if (typeof result === 'number') {
+    if (result === 0 || result === 1 || result === 2) return result as RoundWinner;
+    if (result === 3) return 0; // GameResult.DRAW → RoundWinner 0
+  }
+  // ... string handling ...
+}
+```
+
+### Fix 15: Remove FISE MatchSettled Back-Propagation ✅
+
+**Problem**: The MatchSettled handler (Fix 8) overwrote ALL round winners to the match winner for FISE matches. This was needed for single-round FISE (where RoundResolved fired with `winner=0`), but in multi-round mode, RoundResolved now fires with the correct per-round winner (0/1/2). The back-propagation caused:
+- Round winners being overwritten (e.g., B's round 1 win changed to A)
+- `syncMatchScore` recounting → inflated win totals (showed 4 wins instead of 3)
+- Dashboard displaying incorrect round results
+
+**File**: `packages/indexer/src/index.ts`
+
+**Solution**: Removed the `rounds.update({ winner: winnerIndex })` back-propagation. Kept `syncMatchScore()` call to ensure final wins_a/wins_b are accurate:
+```typescript
+// Before (overwrote all rounds):
+if (matchCheck?.is_fise) {
+  await supabase.from('rounds').update({ winner: winnerIndex }).eq('match_id', mId);
+  await syncMatchScore(mId!);
+}
+
+// After (preserves per-round winners from RoundResolved):
+if (matchCheck?.is_fise) {
+  await syncMatchScore(mId!);
+}
+```
+
+### Fix 16: Supabase Backup Trigger for Missed Blockchain Events ✅
+
+**Problem**: `watchContractEvent` only receives events from the current block forward. If the Watcher restarts after `MoveRevealed` events were emitted, those events are lost. Rounds get stuck because the Watcher never processes them. This is especially problematic for draw replays where a restart between the draw resolution and the replay reveals causes the round to hang.
+
+**File**: `packages/falken-vm/src/Watcher.ts`
+
+**Solution**: Added a Supabase realtime listener on the `rounds` table that fires when moves are unmasked (dual-reveal gate sets `move` column). This provides a backup trigger that works even if blockchain events were missed:
+```typescript
+// Fires when the indexer unmasks both moves (dual-reveal gate sets move column)
+supabase
+  .channel('fise-watcher-rounds')
+  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rounds', filter: 'move=neq.null' }, async (payload) => {
+    const round = payload.new;
+    if (!round.match_id || !round.move) return;
+    await this.processMatch(round.match_id, escrowAddress, registryAddress);
+  })
+  .subscribe();
+```
+The processing lock prevents duplicate resolution — if the blockchain event already triggered processing, the DB trigger is safely skipped via `ALREADY_PROCESSING // SKIPPING_DUPLICATE`.
+
+---
+
+### IMPORTANT: Deployed IPFS Logic vs Source Code Mismatch
+
+The **deployed** IPFS logic (`QmcaiTUUvVHQ6oLz61R2AYbaZMJPmZYeoN3N4cBxuXSXQs`) differs significantly from the source in `packages/falken-logic-sdk/examples/rps.ts`:
+
+| Feature | Source (`rps.ts`) | Deployed IPFS |
+|---------|-------------------|---------------|
+| Move values | 1=Rock, 2=Paper, 3=Scissors | 0=Rock, 1=Paper, 2=Scissors (modular: `(a+1)%3===b` → B wins) |
+| State tracking | `scoreA`, `winsRequired` | `result`, `complete` |
+| Player key | `state.playerA`/`state.playerB` property | Player address as object key (`state.moves[playerAddr]`) |
+| Round guard | None (processes all rounds) | `if (move.round !== state.round) return state` |
+| Draw return | `GameResult.PENDING = 0` | `3` (actual draw value) |
+| Address handling | No normalization | `.toLowerCase()` on both init and processMove |
+
+**The deployed IPFS code is the authoritative version.** The `rps.ts` example should NOT be used as reference for debugging.
+
+---
+
+## Previous Fixes (2026-02-28)
 
 ### Fix 6: Indexer MatchSettled ABI Mismatch ✅
 
@@ -293,30 +431,34 @@ export type RoundWinner = 0 | 1 | 2;
 
 async resolveRound(jsCode: string, context: MatchContext, moves: GameMove[]): Promise<RoundWinner> {
     const currentRound = moves[0]?.round || 1;
-    
+
     // Transform and execute JS code
     const transformedCode = this.transformJsCode(jsCode);
-    const runLogic = new Function('context', 'moves', `...`);
-    const result = runLogic(context, moves);
-    
+    const runLogic = new Function('context', 'moves', `
+      // ... module setup, class discovery ...
+      const game = new GameClass();
+      let state = game.init(context);
+      for (const move of moves) { state = game.processMove(state, move); }
+      return game.checkResult(state);
+    `);
+
+    // CRITICAL: Normalize moves to round 1.
+    // IPFS game logic init() sets state.round=1 and processMove skips
+    // moves where move.round !== state.round. Since we create fresh
+    // state each resolution, we must align rounds.
+    const normalizedMoves = moves.map(m => ({ ...m, round: 1 }));
+    const result = runLogic(context, normalizedMoves);
+
     // Normalize result to 0/1/2
     return this.normalizeResult(result, context);
 }
 
 private normalizeResult(result: any, context: MatchContext): RoundWinner {
-    // Handle numeric results
-    if (typeof result === 'number' && result >= 0 && result <= 2) {
-        return result as RoundWinner;
+    if (typeof result === 'number') {
+        if (result === 0 || result === 1 || result === 2) return result as RoundWinner;
+        if (result === 3) return 0; // GameResult.DRAW=3 → RoundWinner 0
     }
-    // Handle string results
-    if (typeof result === 'string') {
-        const lower = result.toLowerCase().trim();
-        if (lower === 'draw' || lower === '0' || lower === 'tie') return 0;
-        if (lower === 'a' || lower === '1' || lower === 'playera') return 1;
-        if (lower === 'b' || lower === '2' || lower === 'playerb') return 2;
-        if (lower === context.playerA.toLowerCase()) return 1;
-        if (lower === context.playerB.toLowerCase()) return 2;
-    }
+    // ... string handling ...
     return 0; // Default to draw
 }
 ```
@@ -506,12 +648,12 @@ The multi-round implementation requires a **new contract deployment** since it a
 2. `packages/reference-agent/src/SimpleAgent.ts` - FISE detection, hash fix
 
 ### Indexer Modified:
-1. `packages/indexer/src/index.ts` - Fixed `MatchSettled` ABI (indexed flag), FISE winner back-propagation, chunk size 2000
+1. `packages/indexer/src/index.ts` - Fixed `MatchSettled` ABI (indexed flag), removed FISE winner back-propagation (Fix 15, was overwriting per-round winners), chunk size 2000
 
 ### Falken VM (Multi-Round Update):
-1. `packages/falken-vm/src/Referee.ts` - ✅ Added `resolveRound()`, `normalizeResult()`, `RoundWinner` type
+1. `packages/falken-vm/src/Referee.ts` - ✅ Added `resolveRound()`, `normalizeResult()` (handles GameResult.DRAW=3), `RoundWinner` type, round normalization (moves.round→1)
 2. `packages/falken-vm/src/Settler.ts` - ✅ Added `resolveRound()` method, updated ABI with `resolveFiseRound`
-3. `packages/falken-vm/src/Watcher.ts` - ✅ Calls `resolveRound()` instead of `settle()`, tracks wins in simulation
+3. `packages/falken-vm/src/Watcher.ts` - ✅ Calls `resolveRound()` instead of `settle()`, filters moves by current round, duplicate processing lock, tracks wins in simulation
 4. `packages/falken-vm/src/Reconstructor.ts` - Match history from Supabase
 
 ---
@@ -533,18 +675,24 @@ The multi-round implementation requires a **new contract deployment** since it a
 - [x] Dashboard shows SETTLED status for settled matches
 - [x] Dashboard shows settlement TX link
 
-### Multi-Round (✅ Implemented & Tested, 🔧 Needs Deployment)
-- [x] Contract: `resolveFiseRound()` implemented
+### Multi-Round (✅ Operational)
+- [x] Contract: `resolveFiseRound()` implemented and deployed
 - [x] Contract: `_settleFiseMatchInternal()` implemented
 - [x] Contract: `_resolveRound()` simplified to no-op
 - [x] FalkenVM: `Settler.resolveRound()` implemented
 - [x] FalkenVM: `Referee.resolveRound()` returns 0/1/2
 - [x] FalkenVM: `Watcher` calls `resolveRound()` instead of `settle()`
+- [x] FalkenVM: Watcher filters moves by current round (Fix 11)
+- [x] FalkenVM: Watcher duplicate processing lock (Fix 12)
+- [x] FalkenVM: Referee normalizes move rounds to 1 (Fix 13)
+- [x] FalkenVM: Referee handles GameResult.DRAW=3 (Fix 14)
+- [x] Indexer: Removed FISE back-propagation (Fix 15)
+- [x] FalkenVM: Supabase backup trigger for missed events (Fix 16)
 - [x] Tests: 90%+ coverage (98% lines, 98% statements, 97% branches)
-- [ ] Deploy new FiseEscrow contract
-- [ ] Test: Match plays multiple rounds
-- [ ] Test: First-to-3 wins triggers auto-settlement
-- [ ] Test: Draws replay same round
+- [x] Deploy new FiseEscrow contract (`0x8e8048213960b8a1126cB56FaF8085DccE35DAc0`)
+- [x] Test: Match plays multiple rounds with correct winners (Match #4: 3-0, Match #5: 3-1)
+- [x] Test: First-to-3 wins triggers auto-settlement (Match #4, #5 settled correctly)
+- [x] Test: Draws replay same round (Match #4 round 2 draw replayed, Match #5 round 3 drew twice then resolved)
 - [ ] Test: Max rounds (5) triggers settlement
 
 ---

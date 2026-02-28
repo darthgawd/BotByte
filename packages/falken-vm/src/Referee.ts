@@ -49,12 +49,12 @@ export class Referee {
         let GameClass;
         const exports = {};
         const module = { exports };
-        
+
         // Transformed game logic code
         ${transformedCode}
-        
+
         GameClass = module.exports;
-        
+
         // If module.exports is empty, try to find the class by name
         if (!GameClass) {
           const classMatch = /class\\s+(\\w+)/.exec(\`${jsCode.replace(/`/g, '\\`')}\`);
@@ -67,13 +67,20 @@ export class Referee {
 
         const game = new GameClass();
         let state = game.init(context);
+
         for (const move of moves) {
           state = game.processMove(state, move);
         }
+
         return game.checkResult(state);
       `);
 
-      const result = runLogic(context, moves);
+      // Normalize moves to round 1 for per-round resolution.
+      // Game logic init() sets state.round=1 and processMove skips moves
+      // where move.round !== state.round. Since we create fresh state each
+      // time, we must align move rounds with the initial state.
+      const normalizedMoves = moves.map(m => ({ ...m, round: 1 }));
+      const result = runLogic(context, normalizedMoves);
       logger.info({ result, round: currentRound }, 'ROUND_EXECUTION_RESULT');
 
       // Validate and normalize result
@@ -151,6 +158,10 @@ export class Referee {
     if (typeof result === 'number') {
       if (result === 0 || result === 1 || result === 2) {
         return result as RoundWinner;
+      }
+      // GameResult.DRAW = 3 → RoundWinner 0 (draw)
+      if (result === 3) {
+        return 0;
       }
     }
     

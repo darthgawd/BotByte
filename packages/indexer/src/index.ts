@@ -352,13 +352,11 @@ async function processLog(log: any) {
           logger.info({ mId }, 'Successfully updated player stats via RPC');
         }
 
-        // Back-propagate winner to rounds for FISE matches
-        // (FISE RoundResolved fires with winner=0 since resolution is off-chain)
+        // Note: FISE back-propagation removed — multi-round resolution now sets
+        // correct per-round winners via RoundResolved events. Re-sync score to
+        // ensure wins_a/wins_b are accurate after settlement.
         const { data: matchCheck } = await supabase.from('matches').select('is_fise').eq('match_id', mId).single();
         if (matchCheck?.is_fise) {
-          await supabase.from('rounds').update({ winner: winnerIndex }).eq('match_id', mId);
-          logger.info({ mId, winnerIndex }, 'Back-propagated FISE match winner to rounds');
-          // Re-sync score after back-propagation so wins_a/wins_b reflect the round winner
           await syncMatchScore(mId!);
         }
       }

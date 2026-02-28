@@ -58,25 +58,40 @@ export class Watcher {
   private reconstructor = new Reconstructor();
   private settler = new Settler();
   private fetcher = new Fetcher();
+  private processingLocks = new Set<string>();
 
   async start(escrowAddress: `0x${string}`, registryAddress: `0x${string}`) {
     logger.info({ escrowAddress, registryAddress }, 'WATCHER_INITIALIZED // MONITORING_ARENA');
 
-    // 1. SUPABASE FALLBACK (For Simulation/Local Test)
-    const supabase = (this.reconstructor as any).supabase;
+    const supabase = this.reconstructor.supabase;
+
+    // 1. SUPABASE LISTENER — Backup trigger for ALL matches (catches missed blockchain events)
+    // Fires when the indexer unmasks both moves (dual-reveal gate sets move column)
     supabase
-      .channel('fise-watcher')
+      .channel('fise-watcher-rounds')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rounds', filter: 'move=neq.null' }, async (payload: any) => {
+        const round = payload.new;
+        if (!round.match_id || !round.move) return;
+
+        logger.info({ dbId: round.match_id, round: round.round_number }, 'DB_MOVE_UNMASKED // CHECKING_ROUND');
+        await this.processMatch(round.match_id, escrowAddress, registryAddress);
+      })
+      .subscribe();
+
+    // 2. SUPABASE LISTENER — Simulation matches (phase-based trigger)
+    supabase
+      .channel('fise-watcher-sim')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, async (payload: any) => {
         const match = payload.new;
         if (!match.match_id.startsWith('test-fise')) return;
         if (match.phase !== 'REVEAL' || match.status !== 'ACTIVE') return;
-        
+
         logger.info({ dbId: match.match_id }, 'SIMULATED_REVEAL_DETECTED // INITIATING_OFFCHAIN_JUDGMENT');
         await this.processMatch(match.match_id, escrowAddress, registryAddress);
       })
       .subscribe();
 
-    // 2. REAL BLOCKCHAIN WATCHER
+    // 3. REAL BLOCKCHAIN WATCHER — Primary trigger for on-chain events
     this.client.watchContractEvent({
       address: escrowAddress,
       abi: FISE_ESCROW_ABI,
@@ -100,16 +115,29 @@ export class Watcher {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         const result = await this.reconstructor.getMatchHistory(dbMatchId);
-        if (result.moves.length >= 2) {
-          return result; // Both moves available
+
+        // Get current round from the match record
+        const { data: matchData } = await this.reconstructor.supabase
+          .from('matches')
+          .select('current_round')
+          .eq('match_id', dbMatchId)
+          .single();
+
+        const currentRound = matchData?.current_round || 1;
+
+        // Only count moves for the CURRENT round
+        const currentRoundMoves = result.moves.filter((m: any) => m.round === currentRound);
+
+        if (currentRoundMoves.length >= 2) {
+          return { context: result.context, moves: currentRoundMoves };
         }
-        // Match found but moves incomplete — indexer may still be unmasking
+        // Match found but current round moves incomplete — waiting for both reveals
         if (attempt < maxRetries - 1) {
-          logger.info({ dbMatchId, moveCount: result.moves.length, attempt: attempt + 1 }, 'WAITING_FOR_MOVES_UNMASK');
+          logger.info({ dbMatchId, currentRound, moveCount: currentRoundMoves.length, attempt: attempt + 1 }, 'WAITING_FOR_CURRENT_ROUND_MOVES');
           await new Promise(r => setTimeout(r, delayMs));
           continue;
         }
-        return result; // Return whatever we have on final attempt
+        return { context: result.context, moves: currentRoundMoves }; // Return current round moves on final attempt
       } catch (err: any) {
         if (attempt < maxRetries - 1 && err.message?.includes('Match not found')) {
           logger.warn({ dbMatchId, attempt: attempt + 1 }, 'WAITING_FOR_INDEXER_SYNC');
@@ -123,13 +151,20 @@ export class Watcher {
   }
 
   private async processMatch(dbMatchId: string, escrowAddress: `0x${string}`, registryAddress: `0x${string}`) {
+    // Prevent duplicate processing from multiple MoveRevealed events per round
+    if (this.processingLocks.has(dbMatchId)) {
+      logger.info({ dbMatchId }, 'ALREADY_PROCESSING // SKIPPING_DUPLICATE');
+      return;
+    }
+    this.processingLocks.add(dbMatchId);
+
     try {
       // Wait for indexer to sync data and unmask both moves
       const { context, moves } = await this.waitForCompleteMatchData(dbMatchId);
 
       // Skip if moves are still incomplete after all retries
       if (moves.length < 2) {
-        logger.info({ dbMatchId, moveCount: moves.length }, 'INCOMPLETE_MOVES // WAITING_FOR_OPPONENT');
+        logger.info({ dbMatchId, moveCount: moves.length }, 'INCOMPLETE_CURRENT_ROUND_MOVES // WAITING');
         return;
       }
       
@@ -225,6 +260,8 @@ export class Watcher {
       }
     } catch (err: any) {
       logger.error({ dbMatchId, err: err.message }, 'VM_PROCESSING_FAULT');
+    } finally {
+      this.processingLocks.delete(dbMatchId);
     }
   }
 }
