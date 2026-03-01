@@ -13,7 +13,7 @@ import { Terminal as TerminalIcon, Swords, Activity, Zap, ShieldCheck, ChevronDo
 export default function ArenaPage() {
   const { authenticated, login } = usePrivy();
   const [activeTab, setActiveTab] = useState<'terminal' | 'arena'>('terminal');
-  const [expandedModule, setExpandedModule] = useState<'rankings' | 'registry' | null>('rankings');
+  const [expandedModule, setExpandedModule] = useState<'rankings' | 'registry' | 'telemetry' | null>('rankings');
 
   return (
     <main className="h-screen w-screen overflow-hidden flex flex-col bg-zinc-50 dark:bg-[#050505] text-zinc-600 dark:text-zinc-400 font-arena text-base p-4 gap-4 transition-colors duration-500">
@@ -58,6 +58,39 @@ export default function ArenaPage() {
             </div>
           </div>
 
+          {/* Module: Falk Stats (The Green Zone) */}
+          <div className={`flex flex-col border transition-all duration-500 rounded-xl overflow-hidden bg-emerald-600/[0.05] dark:bg-emerald-600/[0.08] ${expandedModule === 'telemetry' ? 'flex-[2] border-emerald-600/30 dark:border-emerald-500/30 shadow-sm dark:shadow-[0_0_50px_rgba(16,185,129,0.15)]' : 'flex-none h-14 border-zinc-200 dark:border-zinc-900'}`}>
+            <button 
+              onClick={() => setExpandedModule(expandedModule === 'telemetry' ? null : 'telemetry')}
+              className={`flex-none px-4 py-5 border-b transition-colors flex items-center justify-between group ${expandedModule === 'telemetry' ? 'bg-emerald-600/20 dark:bg-emerald-600/20 border-emerald-600/30 dark:border-emerald-500/30' : 'bg-emerald-600/10 dark:bg-emerald-900/20 border-emerald-600/20 dark:border-zinc-900'}`}
+            >
+              <div className="flex items-center gap-3">
+                <Activity className={`w-5 h-5 transition-colors ${expandedModule === 'telemetry' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400'}`} />
+                <span className="text-base font-arena font-black uppercase tracking-[0.3em] text-zinc-900 dark:text-white">Falk Stats</span>
+              </div>
+              <ChevronDown className={`w-5 h-5 text-zinc-500 transition-transform duration-300 ${expandedModule === 'telemetry' ? 'rotate-180' : ''}`} />
+            </button>
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+              <StatsGrid />
+              <div className="mt-4 p-4 border border-zinc-200 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-900/10 rounded-xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-black text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">Protocol_Link</span>
+                  <div className="px-2 py-0.5 rounded bg-emerald-600/5 dark:bg-emerald-500/10 border border-emerald-600/10 dark:border-emerald-500/20 text-[8px] font-bold text-emerald-600 dark:text-emerald-500 uppercase">Secure</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-400 dark:text-zinc-500 uppercase tracking-tighter">Network</span>
+                    <span className="text-zinc-900 dark:text-zinc-200 font-bold tracking-tight">BASE_SEPOLIA</span>
+                  </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-400 dark:text-zinc-500 uppercase tracking-tighter">Sync_Status</span>
+                    <span className="text-emerald-600 dark:text-emerald-500 font-bold tracking-tight uppercase">Optimal</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Module: App Store (The Purple Zone) */}
           <div className={`flex flex-col border transition-all duration-500 rounded-xl overflow-hidden bg-purple-600/[0.05] dark:bg-purple-600/[0.08] ${expandedModule === 'registry' ? 'flex-[2] border-purple-600/30 dark:border-purple-500/30 shadow-sm dark:shadow-[0_0_50px_rgba(168,85,247,0.15)]' : 'flex-none h-14 border-purple-600/20 dark:border-zinc-900'}`}>
             <button 
@@ -79,8 +112,8 @@ export default function ArenaPage() {
 
         </div>
 
-        {/* Center Column: The Primary Feed [6 Cols] */}
-        <div className="lg:col-span-6 border border-blue-600/50 dark:border-blue-500/50 bg-white dark:bg-[#080808] rounded-xl flex flex-col min-h-0 shadow-sm dark:shadow-2xl overflow-hidden transition-colors">
+        {/* Right Column: The Primary Feed [9 Cols] */}
+        <div className="lg:col-span-9 border border-blue-600/50 dark:border-blue-500/50 bg-white dark:bg-[#080808] rounded-xl flex flex-col min-h-0 shadow-sm dark:shadow-2xl overflow-hidden transition-colors">
           <div className="flex-none px-4 py-4 bg-zinc-100/50 dark:bg-zinc-900/20 border-b border-blue-600/20 dark:border-blue-500/30 flex items-center justify-between">
             <div className="flex gap-6">
               <button 
@@ -115,53 +148,6 @@ export default function ArenaPage() {
                 <MatchFeed />
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Right Column: Global Telemetry [3 Cols] */}
-        <div className="lg:col-span-3 flex flex-col gap-4 min-h-0">
-          
-          {/* Module: Network Telemetry */}
-          <div className="flex-1 border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-[#080808] rounded-xl flex flex-col min-h-0 shadow-sm dark:shadow-2xl overflow-hidden transition-colors">
-            <div className="flex-none px-4 py-5 bg-zinc-100/50 dark:bg-zinc-900/20 border-b border-zinc-200 dark:border-zinc-900 flex items-center gap-3">
-              <Activity className="w-5 h-5 text-blue-600 dark:text-blue-500" />
-              <span className="text-xs font-arena font-black uppercase tracking-[0.3em] text-zinc-900 dark:text-white">Global_Telemetry</span>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar dark:bg-blue-600/10">
-              <StatsGrid />
-              
-              <div className="p-4 border border-zinc-200 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-900/10 rounded-xl space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-black text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">Protocol_Link</span>
-                  <div className="px-2 py-0.5 rounded bg-blue-600/5 dark:bg-blue-500/10 border border-blue-600/10 dark:border-blue-500/20 text-[8px] font-bold text-blue-600 dark:text-blue-500 uppercase">Secure</div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-[10px]">
-                    <span className="text-zinc-400 dark:text-zinc-500 uppercase tracking-tighter">Network</span>
-                    <span className="text-zinc-900 dark:text-zinc-200 font-bold tracking-tight">BASE_SEPOLIA</span>
-                  </div>
-                  <div className="flex justify-between text-[10px]">
-                    <span className="text-zinc-400 dark:text-zinc-500 uppercase tracking-tighter">Sync_Status</span>
-                    <span className="text-blue-600 dark:text-blue-500 font-bold tracking-tight uppercase">Optimal</span>
-                  </div>
-                  <div className="flex justify-between text-[10px]">
-                    <span className="text-zinc-400 dark:text-zinc-500 uppercase tracking-tighter">Node_ID</span>
-                    <span className="text-zinc-900 dark:text-zinc-200 font-bold tabular-nums">0XFALKEN_772</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Module: System Status Bar */}
-          <div className="flex-none border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-[#080808] rounded-xl p-4 flex flex-col gap-3 shadow-sm dark:shadow-2xl transition-colors">
-            <div className="flex items-center gap-3">
-              <Zap className="w-3 h-3 text-blue-600 dark:text-blue-500 animate-pulse" />
-              <span className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">System_Load</span>
-            </div>
-            <div className="w-full h-1 bg-zinc-100 dark:bg-zinc-900 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-600 w-1/3 shadow-[0_0_10px_rgba(37,99,235,0.2)] dark:shadow-[0_0_10px_rgba(37,99,235,0.5)]" />
-            </div>
           </div>
         </div>
       </div>

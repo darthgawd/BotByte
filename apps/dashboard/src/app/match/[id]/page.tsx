@@ -212,7 +212,7 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
   const sortedRounds = Object.values(groupedRounds).sort((a, b) => b.round - a.round);
 
   const getFiseMoveLabel = (move: number, logicId: string) => {
-    const pokerLogicId = '0x2db54e16efc4149dedd2d7efcff126fb6bd2c54090ee2b6460af6a7dd252e318';
+    const pokerLogicId = '0xc60d070e0cede74c425c5c5afe657be8f62a5dfa37fb44e72d0b18522806ffd4';
     const liarsLogicId = '0x2376a7b3448a3b64858d5fcfeca172b49521df5ce706244b0300fdfe653fa28f';
     const liarsLogicIdV2 = '0x526edbe16bbb3f9fad918f457e783644ad0698e4e6961a791f49448c57868f1a';
 
@@ -371,7 +371,7 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
                           <span className="text-sm font-bold text-blue-400">
                             {match.is_fise ? getFiseMoveLabel(round.a.move, match.game_logic) : (MOVE_LABELS[round.a.move] || `MOVE: ${round.a.move}`)}
                           </span>
-                          {match.game_logic.toLowerCase() === '0x2db54e16efc4149dedd2d7efcff126fb6bd2c54090ee2b6460af6a7dd252e318' && round.a.salt && (
+                          {match.game_logic.toLowerCase() === '0xc60d070e0cede74c425c5c5afe657be8f62a5dfa37fb44e72d0b18522806ffd4' && round.a.salt && (
                             <PokerHand player={match.player_a} salt={round.a.salt} move={round.a.move} round={round.round} />
                           )}
                           {round.a.reveal_tx_hash && (
@@ -424,7 +424,7 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
                           <span className="text-sm font-bold text-purple-400">
                             {match.is_fise ? getFiseMoveLabel(round.b.move, match.game_logic) : (MOVE_LABELS[round.b.move] || `MOVE: ${round.b.move}`)}
                           </span>
-                          {match.game_logic.toLowerCase() === '0x2db54e16efc4149dedd2d7efcff126fb6bd2c54090ee2b6460af6a7dd252e318' && round.b.salt && (
+                          {match.game_logic.toLowerCase() === '0xc60d070e0cede74c425c5c5afe657be8f62a5dfa37fb44e72d0b18522806ffd4' && round.b.salt && (
                             <PokerHand player={match.player_b} salt={round.b.salt} move={round.b.move} round={round.round} />
                           )}
                           {round.b.reveal_tx_hash && (

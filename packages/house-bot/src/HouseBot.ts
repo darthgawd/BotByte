@@ -63,7 +63,7 @@ class HouseBot {
     this.gameLogics = [
       // "0xf2f80f1811f9e2c534946f0e8ddbdbd5c1e23b6e48772afe3bccdb9f2e1cfdf3", // RockPaperScissorsJS (JS)
       // "0xeab3c0b5d2eb106900c3d910b01a89c6ab7e4fc0a79eca8d75fb7a805cfef9fb", // LiarsDiceJS (JS)
-      "0x2db54e16efc4149dedd2d7efcff126fb6bd2c54090ee2b6460af6a7dd252e318", // ShowdownBlitzPoker (JS)
+      "0xc60d070e0cede74c425c5c5afe657be8f62a5dfa37fb44e72d0b18522806ffd4", // ShowdownBlitzPoker (JS)
     ].filter(Boolean) as string[];
 
     logger.info({
@@ -100,13 +100,30 @@ class HouseBot {
       await this.claimNickname(nickname);
     }
 
+    // 1. Initial Scan
+    await this.handleMatches();
+
+    // 2. Realtime Listeners (The Speed Layer)
+    logger.info('📡 Enabling Realtime Strategic Watcher...');
+    (supabase as any)
+      .channel('house-bot-swarm')
+      .on('postgres_changes', { event: '*', table: 'matches' }, (payload: any) => {
+        logger.debug({ event: payload.eventType }, '⚡ Match update detected');
+        this.handleMatches();
+      })
+      .on('postgres_changes', { event: 'INSERT', table: 'rounds' }, (payload: any) => {
+        logger.debug('⚡ New move detected');
+        this.handleMatches();
+      })
+      .subscribe();
+
+    // 3. Heartbeat Polling (The Fallback Layer)
     while (true) {
       try {
+        await new Promise(resolve => setTimeout(resolve, 60000)); // Heartbeat every 60s
         await this.handleMatches();
-        await new Promise(resolve => setTimeout(resolve, 30000)); // Polling slower: every 30s
       } catch (e) {
-        logger.error(e, 'House Bot Error');
-        await new Promise(resolve => setTimeout(resolve, 10000)); // Back off on error
+        logger.error(e, 'House Bot Heartbeat Error');
       }
     }
   }
@@ -313,7 +330,7 @@ class HouseBot {
     }
 
     // Check if this is the ShowdownBlitzPoker Logic ID
-    if (logicLower === '0x2db54e16efc4149dedd2d7efcff126fb6bd2c54090ee2b6460af6a7dd252e318') {
+    if (logicLower === '0xc60d070e0cede74c425c5c5afe657be8f62a5dfa37fb44e72d0b18522806ffd4') {
       return this.getPokerBlitzMove(salt!, round!);
     }
 

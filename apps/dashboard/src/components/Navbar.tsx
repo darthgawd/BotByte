@@ -62,6 +62,16 @@ export function Navbar() {
 
   return (
     <>
+      <style jsx global>{`
+        @keyframes pulse-yellow-blue {
+          0%, 100% { color: #EAB308; fill: rgba(234, 179, 8, 0.1); }
+          50% { color: #2563EB; fill: rgba(37, 99, 235, 0.1); }
+        }
+        .animate-pulse-yellow-blue {
+          animation: pulse-yellow-blue 3s ease-in-out infinite;
+        }
+      `}</style>
+
       {/* Global Processing Overlay - Fixed Full Screen */}
       {isProcessing && (
         <div className="fixed inset-0 bg-white/90 dark:bg-black/90 backdrop-blur-xl z-[9999] flex flex-col items-center justify-center animate-in fade-in duration-500">
@@ -81,7 +91,7 @@ export function Navbar() {
       <nav className="border-b border-zinc-300 dark:border-zinc-800 bg-blue-600/5 dark:bg-black/50 backdrop-blur-md sticky top-0 z-50 h-16 text-zinc-500 dark:text-zinc-400 font-sans text-xs transition-colors duration-500">
         <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between font-sans">
           <Link href="/" className="flex items-center gap-2 group transition-opacity">
-            <FalconIcon className="w-8 h-8 text-blue-600 dark:text-blue-500 fill-blue-600/10 dark:fill-blue-500/10 group-hover:text-gold group-hover:fill-gold/10 transition-colors duration-300" color="currentColor" />
+            <FalconIcon className="w-8 h-8 animate-pulse-yellow-blue group-hover:text-gold group-hover:fill-gold/10 transition-colors duration-300" color="currentColor" />
             <div className="flex items-baseline gap-1.5">
               <span className="font-bold text-xl tracking-tight text-zinc-900 dark:text-white uppercase tracking-tighter leading-none group-hover:text-gold transition-colors duration-300">FALKEN</span>
               <span className="font-black text-xs text-blue-600 dark:text-blue-500 uppercase tracking-[0.2em] italic leading-none">Protocol</span>
@@ -91,6 +101,9 @@ export function Navbar() {
           <div className="flex items-center gap-6 text-zinc-500 dark:text-zinc-500">
             <Link href="/arena" className="text-xs font-bold hover:text-zinc-900 dark:hover:text-white transition-colors uppercase tracking-widest text-nowrap px-3 py-2 rounded-lg dark:bg-blue-600/10 dark:text-blue-500 dark:border dark:border-blue-500/20">
               Arena
+            </Link>
+            <Link href="/falkland" className="text-xs font-bold hover:text-zinc-900 dark:hover:text-white transition-colors uppercase tracking-widest text-nowrap px-3 py-2 rounded-lg dark:bg-blue-600/10 dark:text-blue-500 dark:border dark:border-blue-500/20">
+              Falkland Arena
             </Link>
             <Link href="/onboarding" className="text-xs font-bold hover:text-zinc-900 dark:hover:text-white transition-colors uppercase tracking-widest text-nowrap px-3 py-2 rounded-lg dark:bg-blue-600/10 dark:text-blue-500 dark:border dark:border-blue-500/20">
               How to Play

@@ -17,7 +17,7 @@ FISE (Falken Immutable Scripting Engine) allows JavaScript-based games to be pla
 | **Logic Registry** | `0xc87d466e9F2240b1d7caB99431D1C80a608268Df` | ✅ Live |
 | **Price Provider** | `0xFd2f3194b866DbE7115447B6b79C0972CcEDE3Ca` | ✅ Live |
 | **RPS Logic ID** | `0xf2f80f1811f9e2c534946f0e8ddbdbd5c1e23b6e48772afe3bccdb9f2e1cfdf3` | ✅ Registered |
-| **Poker Blitz Logic ID** | `0x2db54e16efc4149dedd2d7efcff126fb6bd2c54090ee2b6460af6a7dd252e318` | ✅ Registered |
+| **Poker Blitz Logic ID** | `0xc60d070e0cede74c425c5c5afe657be8f62a5dfa37fb44e72d0b18522806ffd4` | ✅ Registered |
 | **Poker IPFS CID** | `QmYX1y7mASoDr9sL8t7P1e1FE4ZKjLYJ65UXh7VLbTMvR6` | ✅ Pinned |
 | **Liar's Dice Logic ID** | `0x2376a7b3448a3b64858d5fcfeca172b49521df5ce706244b0300fdfe653fa28f` | ✅ Registered |
 
@@ -651,7 +651,7 @@ cast send $LOGIC_REGISTRY "registerLogic(string,bytes32)" \
 # Poker Blitz
 cast send $LOGIC_REGISTRY "registerLogic(string,bytes32)" \
   "QmYX1y7mASoDr9sL8t7P1e1FE4ZKjLYJ65UXh7VLbTMvR6" \
-  0x2db54e16efc4149dedd2d7efcff126fb6bd2c54090ee2b6460af6a7dd252e318 \
+  0xc60d070e0cede74c425c5c5afe657be8f62a5dfa37fb44e72d0b18522806ffd4 \
   --rpc-url https://sepolia.base.org --private-key $PRIVATE_KEY
 ```
 

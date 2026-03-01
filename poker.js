@@ -36,7 +36,7 @@ export default class ShowdownBlitzPoker {
     const player = move.player.toLowerCase();
     
     // Generate Round-Specific Deck (Seed includes round number)
-    const deck = this.generateDeck(player + move.salt + move.round);
+    const deck = this.generateDeck(player + move.salt);
     const initialHand = deck.slice(0, 5);
     
     const moveData = move.moveData.toString();

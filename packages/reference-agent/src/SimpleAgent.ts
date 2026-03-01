@@ -45,6 +45,7 @@ export class SimpleAgent {
   private saltManager: SaltManager;
   private escrowAddress: string;
   private genAI: GoogleGenerativeAI;
+  private busy = false;
 
   constructor(privateKey: string) {
     this.provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
@@ -58,18 +59,39 @@ export class SimpleAgent {
   async run() {
     logger.info({ address: this.wallet.address }, '🤖 LLM Agent active');
     
+    // 1. Initial Scan
+    await this.handleMatches();
+
+    // 2. Realtime Listeners
+    logger.info('📡 Enabling LLM Realtime Watcher...');
+    (supabase as any)
+      .channel('agent-intel-stream')
+      .on('postgres_changes', { event: '*', table: 'matches' }, () => this.handleMatches())
+      .on('postgres_changes', { event: 'INSERT', table: 'rounds' }, () => this.handleMatches())
+      .subscribe();
+
+    // 3. Heartbeat
     while (true) {
       try {
+        await new Promise(resolve => setTimeout(resolve, 60000));
         await this.handleMatches();
-        await new Promise(resolve => setTimeout(resolve, 20000)); // Poll every 20s
       } catch (e) {
-        logger.error(e, 'Agent Loop Error');
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        logger.error(e, 'Agent Heartbeat Error');
       }
     }
   }
 
   async handleMatches() {
+    if (this.busy) return;
+    this.busy = true;
+    try {
+      await this._handleMatches();
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  private async _handleMatches() {
     let matchCount = 0;
     try {
       const counter = await this.escrow.matchCounter();
@@ -104,7 +126,7 @@ export class SimpleAgent {
 
           if (logicId === '0xf2f80f1811f9e2c534946f0e8ddbdbd5c1e23b6e48772afe3bccdb9f2e1cfdf3' || 
               logicId === '0x2376a7b3448a3b64858d5fcfeca172b49521df5ce706244b0300fdfe653fa28f' ||
-              logicId === '0x2db54e16efc4149dedd2d7efcff126fb6bd2c54090ee2b6460af6a7dd252e318') {
+              logicId === '0xc60d070e0cede74c425c5c5afe657be8f62a5dfa37fb44e72d0b18522806ffd4') {
             logger.info({ matchId: i, logicId }, 'Found OPEN FISE JS match, joining...');
             await this.joinMatch(i, stake);
           } else {
@@ -182,9 +204,18 @@ export class SimpleAgent {
     else if (phase === 1 && !revealed) {
       const entry = await this.saltManager.getSalt(dbMatchId, round);
       if (entry) {
+        // Wait for provider nonce to settle after recent commits
+        await new Promise(r => setTimeout(r, 2000));
+        // Re-check on-chain state to avoid stale reveals
+        const [, alreadyRevealed] = await this.escrow.getRoundStatus(matchId, round, this.wallet.address);
+        if (alreadyRevealed) return;
         logger.info({ matchId, round }, '🔓 LLM Revealing move');
-        const tx = await this.escrow.revealMove(matchId, entry.move, entry.salt);
-        await tx.wait();
+        try {
+          const tx = await this.escrow.revealMove(matchId, entry.move, entry.salt);
+          await tx.wait();
+        } catch (err: any) {
+          logger.error({ matchId, round, err: (err as any).message }, '❌ Reveal failed');
+        }
       }
     }
   }
@@ -218,7 +249,7 @@ export class SimpleAgent {
     try {
       if (logicId === '0xf2f80f1811f9e2c534946f0e8ddbdbd5c1e23b6e48772afe3bccdb9f2e1cfdf3') {
         logicSource = fs.readFileSync(path.resolve(__dirname, '../../../rps.js'), 'utf8');
-      } else if (logicId === '0x2db54e16efc4149dedd2d7efcff126fb6bd2c54090ee2b6460af6a7dd252e318') {
+      } else if (logicId === '0xc60d070e0cede74c425c5c5afe657be8f62a5dfa37fb44e72d0b18522806ffd4') {
         logicSource = fs.readFileSync(path.resolve(__dirname, '../../../poker.js'), 'utf8');
       } else {
         logicSource = fs.readFileSync(path.resolve(__dirname, '../../../liarsdice.js'), 'utf8');
@@ -229,7 +260,7 @@ export class SimpleAgent {
 
     // For Poker Blitz, compute the actual hand so the LLM can make informed decisions
     let handContext = '';
-    if (logicId === '0x2db54e16efc4149dedd2d7efcff126fb6bd2c54090ee2b6460af6a7dd252e318') {
+    if (logicId === '0xc60d070e0cede74c425c5c5afe657be8f62a5dfa37fb44e72d0b18522806ffd4') {
       const hand = this.computePokerHand(this.wallet.address, salt, round);
       const handNames = hand.map((c, i) => `  Index ${i}: ${this.cardName(c)}`);
       handContext = `

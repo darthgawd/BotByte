@@ -48,6 +48,7 @@ class LLMHouseBot {
   private genAI: GoogleGenerativeAI;
   private gameLogics: string[];
   private escrowAddress: string;
+  private busy = false;
 
   constructor() {
     this.provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
@@ -58,7 +59,7 @@ class LLMHouseBot {
     const registry = process.env.LOGIC_REGISTRY_ADDRESS;
     
     this.gameLogics = [
-      "0x2db54e16efc4149dedd2d7efcff126fb6bd2c54090ee2b6460af6a7dd252e318"  // Poker Blitz
+      "0xc60d070e0cede74c425c5c5afe657be8f62a5dfa37fb44e72d0b18522806ffd4"  // Poker Blitz
     ];
 
     this.wallet = new ethers.Wallet(pk!, this.provider);
@@ -71,18 +72,39 @@ class LLMHouseBot {
   async run() {
     logger.info({ address: this.wallet.address }, '🤖 LLM House Bot (Joshua) active');
     
+    // 1. Initial Scan
+    await this.handleMatches();
+
+    // 2. Realtime Listeners
+    logger.info('📡 Enabling LLM Joshua Realtime Watcher...');
+    (supabase as any)
+      .channel('joshua-llm-swarm')
+      .on('postgres_changes', { event: '*', table: 'matches' }, () => this.handleMatches())
+      .on('postgres_changes', { event: 'INSERT', table: 'rounds' }, () => this.handleMatches())
+      .subscribe();
+
+    // 3. Heartbeat
     while (true) {
       try {
+        await new Promise(resolve => setTimeout(resolve, 60000));
         await this.handleMatches();
-        await new Promise(resolve => setTimeout(resolve, 30000));
       } catch (e) {
-        logger.error(e, 'LLM House Bot Error');
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        logger.error(e, 'LLM House Bot Heartbeat Error');
       }
     }
   }
 
   async handleMatches() {
+    if (this.busy) return;
+    this.busy = true;
+    try {
+      await this._handleMatches();
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  private async _handleMatches() {
     const counter = await this.escrow.matchCounter();
     const matchCount = Number(counter);
     
@@ -202,6 +224,11 @@ class LLMHouseBot {
     } else if (phase === 1 && !revealed) {
       const entry = await this.saltManager.getSalt(dbMatchId, round);
       if (entry) {
+        // Wait for provider nonce to settle after recent commits
+        await new Promise(r => setTimeout(r, 2000));
+        // Re-check on-chain state to avoid stale reveals
+        const [, alreadyRevealed] = await this.escrow.getRoundStatus(matchId, round, this.wallet.address);
+        if (alreadyRevealed) return;
         logger.info({ matchId, round, move: entry.move }, '🔓 LLM revealing move');
         try {
           const tx = await this.escrow.revealMove(matchId, entry.move, entry.salt);
@@ -220,7 +247,7 @@ class LLMHouseBot {
     let logicSource = "";
     if (logicId === '0xf2f80f1811f9e2c534946f0e8ddbdbd5c1e23b6e48772afe3bccdb9f2e1cfdf3') {
       logicSource = fs.readFileSync(path.resolve(__dirname, '../../../rps.js'), 'utf8');
-    } else if (logicId === '0x2db54e16efc4149dedd2d7efcff126fb6bd2c54090ee2b6460af6a7dd252e318') {
+    } else if (logicId === '0xc60d070e0cede74c425c5c5afe657be8f62a5dfa37fb44e72d0b18522806ffd4') {
       logicSource = fs.readFileSync(path.resolve(__dirname, '../../../poker.js'), 'utf8');
     } else {
       logicSource = fs.readFileSync(path.resolve(__dirname, '../../../liarsdice.js'), 'utf8');
@@ -228,7 +255,7 @@ class LLMHouseBot {
 
     // 2. Compute poker hand if applicable
     let handContext = '';
-    if (logicId === '0x2db54e16efc4149dedd2d7efcff126fb6bd2c54090ee2b6460af6a7dd252e318') {
+    if (logicId === '0xc60d070e0cede74c425c5c5afe657be8f62a5dfa37fb44e72d0b18522806ffd4') {
       const hand = this.computePokerHand(this.wallet.address, salt, round);
       const handNames = hand.map((c, i) => `  Index ${i}: ${this.cardName(c)}`);
       handContext = `
