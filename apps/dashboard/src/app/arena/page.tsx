@@ -43,40 +43,6 @@ export default function ArenaPage() {
         {/* Left Column: Intel Lens [3 Cols] */}
         <div className="lg:col-span-3 flex flex-col gap-4 min-h-0">
           
-          {/* Module: Leaderboard */}
-          <div className={`flex flex-col border transition-all duration-500 rounded-xl overflow-hidden bg-blue-600/[0.05] dark:bg-blue-600/[0.08] ${expandedModule === 'rankings' ? 'flex-[2]' : 'flex-none h-14'} border-zinc-200 dark:border-zinc-900`}>
-            <button 
-              onClick={() => setExpandedModule(expandedModule === 'rankings' ? null : 'rankings')}
-              className="flex-none px-4 py-5 border-b border-zinc-200 dark:border-zinc-900 transition-colors flex items-center justify-between bg-blue-600/10 dark:bg-blue-900/20"
-            >
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                <span className="text-base font-arena font-black uppercase tracking-[0.3em] text-zinc-900 dark:text-white">Leaderboard</span>
-              </div>
-              <ChevronDown className={`w-5 h-5 text-zinc-500 transition-transform duration-300 ${expandedModule === 'rankings' ? 'rotate-180' : ''}`} />
-            </button>
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-              <Leaderboard />
-            </div>
-          </div>
-
-          {/* Module: Falk Stats */}
-          <div className={`flex flex-col border transition-all duration-500 rounded-xl overflow-hidden bg-emerald-600/[0.05] dark:bg-emerald-600/[0.08] ${expandedModule === 'telemetry' ? 'flex-[2]' : 'flex-none h-14'} border-zinc-200 dark:border-zinc-900`}>
-            <button 
-              onClick={() => setExpandedModule(expandedModule === 'telemetry' ? null : 'telemetry')}
-              className="flex-none px-4 py-5 border-b border-zinc-200 dark:border-zinc-900 transition-colors flex items-center justify-between bg-emerald-600/10 dark:bg-emerald-900/20"
-            >
-              <div className="flex items-center gap-3">
-                <Activity className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-base font-arena font-black uppercase tracking-[0.3em] text-zinc-900 dark:text-white">Falk Stats</span>
-              </div>
-              <ChevronDown className={`w-5 h-5 text-zinc-500 transition-transform duration-300 ${expandedModule === 'telemetry' ? 'rotate-180' : ''}`} />
-            </button>
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-              <StatsGrid />
-            </div>
-          </div>
-
           {/* Module: App Store */}
           <div className={`flex flex-col border transition-all duration-500 rounded-xl overflow-hidden bg-purple-600/[0.05] dark:bg-purple-600/[0.08] ${expandedModule === 'registry' ? 'flex-[2]' : 'flex-none h-14'} border-zinc-200 dark:border-zinc-900`}>
             <button 
@@ -110,6 +76,40 @@ export default function ArenaPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Module: Leaderboard */}
+          <div className={`flex flex-col border transition-all duration-500 rounded-xl overflow-hidden bg-blue-600/[0.05] dark:bg-blue-600/[0.08] ${expandedModule === 'rankings' ? 'flex-[2]' : 'flex-none h-14'} border-zinc-200 dark:border-zinc-900`}>
+            <button 
+              onClick={() => setExpandedModule(expandedModule === 'rankings' ? null : 'rankings')}
+              className="flex-none px-4 py-5 border-b border-zinc-200 dark:border-zinc-900 transition-colors flex items-center justify-between bg-blue-600/10 dark:bg-blue-900/20"
+            >
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <span className="text-base font-arena font-black uppercase tracking-[0.3em] text-zinc-900 dark:text-white">Leaderboard</span>
+              </div>
+              <ChevronDown className={`w-5 h-5 text-zinc-500 transition-transform duration-300 ${expandedModule === 'rankings' ? 'rotate-180' : ''}`} />
+            </button>
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+              <Leaderboard />
+            </div>
+          </div>
+
+          {/* Module: Falk Stats */}
+          <div className={`flex flex-col border transition-all duration-500 rounded-xl overflow-hidden bg-emerald-600/[0.05] dark:bg-emerald-600/[0.08] ${expandedModule === 'telemetry' ? 'flex-[2]' : 'flex-none h-14'} border-zinc-200 dark:border-zinc-900`}>
+            <button 
+              onClick={() => setExpandedModule(expandedModule === 'telemetry' ? null : 'telemetry')}
+              className="flex-none px-4 py-5 border-b border-zinc-200 dark:border-zinc-900 transition-colors flex items-center justify-between bg-emerald-600/10 dark:bg-emerald-900/20"
+            >
+              <div className="flex items-center gap-3">
+                <Activity className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-base font-arena font-black uppercase tracking-[0.3em] text-zinc-900 dark:text-white">Falk Stats</span>
+              </div>
+              <ChevronDown className={`w-5 h-5 text-zinc-500 transition-transform duration-300 ${expandedModule === 'telemetry' ? 'rotate-180' : ''}`} />
+            </button>
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+              <StatsGrid />
             </div>
           </div>
         </div>
