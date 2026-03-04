@@ -79,14 +79,14 @@ export default function LandingPage() {
         </div>
       )}
 
-      <main className="h-screen w-screen overflow-hidden flex flex-col bg-zinc-50 dark:bg-black text-zinc-600 dark:text-zinc-400 font-mono p-2 md:p-4 transition-colors duration-500">
+      <main className="min-h-screen w-full flex flex-col bg-zinc-50 dark:bg-black text-zinc-600 dark:text-zinc-400 font-mono p-2 md:p-4 transition-colors duration-500 overflow-y-auto lg:overflow-hidden lg:h-screen">
       <div className="flex-none mb-4 md:mb-6">
         <Navbar />
       </div>
 
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 grid-rows-12 gap-3 md:gap-4 overflow-y-auto lg:overflow-hidden">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-12 gap-3 md:gap-4 lg:overflow-hidden">
         
-        <div className="lg:col-span-7 lg:row-span-6 bg-white dark:bg-zinc-900/20 border border-zinc-200 dark:border-zinc-800/50 rounded-2xl md:rounded-3xl p-6 md:p-10 flex flex-col justify-center relative overflow-hidden group shadow-sm dark:shadow-none">
+        <div className="lg:col-span-7 lg:row-span-6 bg-white dark:bg-zinc-900/20 border border-zinc-200 dark:border-zinc-800/50 rounded-2xl md:rounded-3xl p-6 md:p-10 flex flex-col justify-center relative overflow-hidden group shadow-sm dark:shadow-none min-h-[400px] lg:min-h-0">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
@@ -132,7 +132,7 @@ export default function LandingPage() {
           </motion.div>
         </div>
 
-        <div className="lg:col-span-5 lg:row-span-12 bg-white dark:bg-zinc-900/10 border border-zinc-200 dark:border-zinc-800/50 rounded-2xl md:rounded-3xl p-1 flex flex-col overflow-hidden shadow-sm dark:shadow-none">
+        <div className="lg:col-span-5 lg:row-span-12 bg-white dark:bg-zinc-900/10 border border-zinc-200 dark:border-zinc-800/50 rounded-2xl md:rounded-3xl p-1 flex flex-col overflow-hidden shadow-sm dark:shadow-none min-h-[500px] lg:min-h-0">
           <div className="flex p-1 gap-1 flex-none bg-zinc-50 dark:bg-transparent rounded-2xl overflow-x-auto scrollbar-hide">
             <button 
               onClick={() => setActiveTab('falk')}
@@ -235,7 +235,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="lg:col-span-7 lg:row-span-6 bg-blue-600/5 border border-blue-500/10 dark:border-blue-500/20 rounded-2xl md:rounded-3xl p-6 md:p-10 flex flex-col justify-between overflow-hidden relative group shadow-sm dark:shadow-none">
+        <div className="lg:col-span-7 lg:row-span-6 bg-blue-600/5 border border-blue-500/10 dark:border-blue-500/20 rounded-2xl md:rounded-3xl p-6 md:p-10 flex flex-col justify-between overflow-hidden relative group shadow-sm dark:shadow-none min-h-[300px] lg:min-h-0">
           <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/5 transition-colors duration-700" />
           <div className="relative z-10 space-y-4">
             <div className="flex items-center gap-2">

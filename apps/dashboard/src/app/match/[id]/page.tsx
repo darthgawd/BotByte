@@ -71,6 +71,11 @@ const CardDisplay = ({ cardId, isDiscarded = false }: { cardId: number, isDiscar
   );
 };
 
+const HAND_LABELS = [
+  "High Card", "Pair", "Two Pair", "Three of a Kind", 
+  "Straight", "Flush", "Full House", "Four of a Kind", "Straight Flush"
+];
+
 const PokerHand = ({ player, matchId, move, round, playerA, saltA, saltB, logicId }: { player: string, matchId: string, move: number | string, round: number, playerA: string, saltA?: string, saltB?: string, logicId: string }) => {
   // 1. Generate deck identically to poker.js
   const generateDeck = (seedStr: string) => {
@@ -86,6 +91,29 @@ const PokerHand = ({ player, matchId, move, round, playerA, saltA, saltB, logicI
       [deck[i], deck[j]] = [deck[j], deck[i]];
     }
     return deck;
+  };
+
+  const getHandRank = (hand: number[]) => {
+    const ranks = hand.map(c => c % 13).sort((a, b) => b - a);
+    const suits = hand.map(c => Math.floor(c / 13));
+    const counts: Record<number, number> = {};
+    ranks.forEach(r => counts[r] = (counts[r] || 0) + 1);
+    const sortedCounts = Object.entries(counts)
+      .map(([rank, count]) => [Number(rank), count])
+      .sort((a, b) => b[1] - a[1] || b[0] - a[0]);
+    const isFlush = new Set(suits).size === 1;
+    let isStraight = ranks.every((r, i) => i === 0 || ranks[i-1] - r === 1);
+    if (!isStraight && ranks[0] === 12 && ranks[1] === 3 && ranks[2] === 2 && ranks[3] === 1 && ranks[4] === 0) isStraight = true;
+
+    if (isStraight && isFlush) return 8;
+    if (sortedCounts[0][1] === 4) return 7;
+    if (sortedCounts[0][1] === 3 && sortedCounts[1][1] === 2) return 6;
+    if (isFlush) return 5;
+    if (isStraight) return 4;
+    if (sortedCounts[0][1] === 3) return 3;
+    if (sortedCounts[0][1] === 2 && sortedCounts[1][1] === 2) return 2;
+    if (sortedCounts[0][1] === 2) return 1;
+    return 0;
   };
 
   // 2. Determine Seed based on Logic Version
@@ -113,11 +141,18 @@ const PokerHand = ({ player, matchId, move, round, playerA, saltA, saltB, logicI
     if (idx >= 0 && idx < 5) finalHand[idx] = deck[replacementOffset + i]; 
   });
 
+  const handRank = getHandRank(finalHand);
+
   return (
-    <div className="flex gap-3 bg-black/40 p-4 rounded-2xl border border-zinc-800/50 scale-110 origin-left mt-2">
-      {finalHand.map((cid, i) => (
-        <CardDisplay key={i} cardId={cid} />
-      ))}
+    <div className="flex flex-col gap-2 scale-110 origin-left mt-2">
+      <div className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] bg-white/5 w-fit px-2 py-0.5 rounded-sm mb-1 border border-white/5 italic">
+        {HAND_LABELS[handRank]}
+      </div>
+      <div className="flex gap-3 bg-black/40 p-4 rounded-2xl border border-zinc-800/50">
+        {finalHand.map((cid, i) => (
+          <CardDisplay key={i} cardId={cid} />
+        ))}
+      </div>
     </div>
   );
 };
@@ -139,7 +174,6 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     async function fetchData() {
       // Stale-response guard: each call gets a sequence number.
-      // If a newer call was started before this one finishes, discard our results.
       const seq = ++fetchSeq.current;
 
       const { data: matchData } = await supabase
@@ -154,24 +188,19 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
         .eq('match_id', matchId)
         .order('round_number', { ascending: true });
 
-      // Discard if a newer fetch was kicked off while we were awaiting
       if (seq !== fetchSeq.current) return;
 
       if (matchData) {
         let playerB = matchData.player_b;
-
-        // SELF-HEALING: If player_b is null but we have rounds, find player B's address
         if (!playerB && roundsData && roundsData.length > 0) {
             const playerBEntry = roundsData.find(r => r.player_address.toLowerCase() !== matchData.player_a.toLowerCase());
             if (playerBEntry) {
                 playerB = playerBEntry.player_address;
-                matchData.player_b = playerB; // Update the object in memory
+                matchData.player_b = playerB;
             }
         }
-
         setMatch(matchData);
 
-        // Fetch nicknames for both players
         const addresses = [matchData.player_a.toLowerCase()];
         if (playerB) addresses.push(playerB.toLowerCase());
 
@@ -180,7 +209,6 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
           .select('address, nickname')
           .in('address', addresses);
 
-        // Final stale check after nickname fetch
         if (seq !== fetchSeq.current) return;
 
         const nameMap: Record<string, string> = {};
@@ -210,12 +238,6 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
     };
   }, [matchId]);
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedHash(text);
-    setTimeout(() => setCopiedHash(null), 2000);
-  };
-
   if (loading) return null;
   if (!match) return <div className="p-20 text-center text-white">Match not found</div>;
 
@@ -233,21 +255,15 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
     const pokerLogicIdV4 = '0x4173a4e2e54727578fd50a3f1e721827c4c97c3a2824ca469c0ec730d4264b43';
     const pokerLogicIdV5 = '0xec63afc7c67678adbe7a60af04d49031878d1e78eff9758b1b79edeb7546dfdf';
     const pokerLogicIdV6 = '0x5f164061c4cbb981098161539f7f691650e0c245be54ade84ea5b57496955846';
+    const pokerLogicIdV1Today = '0x61266711df04ebe17432b3482471e64c69150e370a9c558657b28944233b97d1';
     const rpsLogicId = '0xf2f80f1811f9e2c534946f0e8ddbdbd5c1e23b6e48772afe3bccdb9f2e1cfdf3';
-    const rpsLogicIdV2 = '0x31adebc3e6f489dab0e3d7867ef5cf63b27bd0735ce35f1cc7f671e3c303ef3a';
 
-    const cleanLogicId = logicId.toLowerCase();
+    const cleanLogicId = (logicId || '').toLowerCase();
 
-    // 1. POKER BLITZ
-    if (cleanLogicId === pokerLogicIdV4 || cleanLogicId === pokerLogicIdV5 || cleanLogicId === pokerLogicIdV6) {
+    if (cleanLogicId === pokerLogicIdV4 || cleanLogicId === pokerLogicIdV5 || cleanLogicId === pokerLogicIdV6 || cleanLogicId === pokerLogicIdV1Today) {
       if (Number(move) === 99) return '🃏 KEEP ALL';
       const count = move.toString().length;
       return `🃏 ${count} ${count === 1 ? 'CARD' : 'CARDS'} DISCARDED`;
-    }
-
-    // 2. ROCK PAPER SCISSORS
-    if (cleanLogicId === rpsLogicId || cleanLogicId === rpsLogicIdV2) {
-      return MOVE_LABELS[move] || `MOVE: ${move}`;
     }
 
     return MOVE_LABELS[move] || `MOVE: ${move}`;
@@ -270,12 +286,10 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
               <div className={`px-3 py-1 rounded-lg font-bold text-[10px] border ${
                 match.game_logic?.toLowerCase() === RPS_LOGIC ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
                 match.game_logic?.toLowerCase() === DICE_LOGIC ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
-                match.is_fise || (match.game_logic?.toLowerCase() === ESCROW_ADDRESS && ESCROW_ADDRESS) ? 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20' :
-                'bg-zinc-800 text-zinc-500 border-zinc-700'
+                'bg-cyan-500/10 text-cyan-500 border-cyan-500/20'
               }`}>
                 {match.game_logic?.toLowerCase() === RPS_LOGIC ? 'RPS' :
-                 match.game_logic?.toLowerCase() === DICE_LOGIC ? 'DICE' :
-                 match.is_fise || (match.game_logic?.toLowerCase() === ESCROW_ADDRESS && ESCROW_ADDRESS) ? 'FISE' : '??'}
+                 match.game_logic?.toLowerCase() === DICE_LOGIC ? 'DICE' : 'FISE'}
               </div>
               <div className="flex items-center gap-2">
                 <Swords className="w-5 h-5 text-red-500" />
@@ -291,14 +305,8 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
                 {match.status}
               </span>
               {match.settle_tx_hash && (
-                <a 
-                  href={`https://sepolia.basescan.org/tx/${match.settle_tx_hash}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-[10px] font-bold text-green-500/50 hover:text-green-500 transition-colors uppercase"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  Settlement TX
+                <a href={`https://sepolia.basescan.org/tx/${match.settle_tx_hash}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-bold text-green-500/50 hover:text-green-500 transition-colors uppercase">
+                  <ExternalLink className="w-3 h-3" /> Settlement TX
                 </a>
               )}
             </div>
@@ -308,18 +316,12 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
           <div className="flex gap-12">
             <div className="text-right">
               <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1">Prize Pool</p>
-              <p className="text-xl font-bold text-white tracking-tight">{(Number(match.stake_wei) * 2 / 1e18).toFixed(5)} ETH</p>
+              <p className="text-xl font-bold text-white tracking-tight">{(Number(match.stake_wei || 0) * 2 / 1e18).toFixed(5)} ETH</p>
             </div>
             <div className="text-right">
               <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1">Phase</p>
-              <p className={`text-xl font-bold tracking-tight ${
-                match.status === 'SETTLED' ? 'text-green-500' :
-                match.status === 'VOIDED' ? 'text-red-500' :
-                'text-blue-500'
-              }`}>
-                {match.status === 'SETTLED' ? 'COMPLETE' : 
-                 match.status === 'VOIDED' ? 'VOIDED' : 
-                 match.phase}
+              <p className={`text-xl font-bold tracking-tight ${match.status === 'SETTLED' ? 'text-green-500' : 'text-blue-500'}`}>
+                {match.status === 'SETTLED' ? 'COMPLETE' : match.phase}
               </p>
             </div>
           </div>
@@ -357,71 +359,48 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
         {/* Round History */}
         <div className="space-y-4 pt-4">
           <h2 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
-            <Clock className="w-4 h-4 text-zinc-500" />
-            Battle Log
+            <Clock className="w-4 h-4 text-zinc-500" /> Battle Log
           </h2>
-          
           <div className="space-y-3">
             {sortedRounds.map((round) => (
               <div key={round.round} className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden">
                 <div className="bg-zinc-900 px-6 py-3 border-b border-zinc-800 flex justify-between items-center">
                   <div className="flex flex-col">
                     <span className="text-xs font-black text-white uppercase tracking-widest">ROUND {round.round}</span>
-                    {round.a?.state_description && (
-                      <span className="text-[10px] font-medium text-zinc-500 mt-0.5">{round.a.state_description}</span>
-                    )}
                   </div>
-                  <span className={`text-xs font-black uppercase tracking-widest ${
-                    round.winner === 0 ? 'text-zinc-500' : 'text-emerald-500'
-                  }`}>
+                  <span className={`text-xs font-black uppercase tracking-widest ${round.winner === 0 ? 'text-zinc-500' : 'text-emerald-500'}`}>
                     {round.winner === 0 ? 'DRAW' : round.winner === 1 ? 'PLAYER A WON' : round.winner === 2 ? 'PLAYER B WON' : 'IN PROGRESS'}
                   </span>
                 </div>
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-zinc-800 min-h-[320px]">
-                  {/* Player A's action */}
                   <div className="p-10 flex flex-col justify-center gap-4">
                     <span className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Player A</span>
                     {round.a?.revealed && round.a?.move != null ? (
                       <div className="flex flex-col gap-4">
-                        <span className="text-3xl font-black text-blue-400 italic tracking-tight">
-                          {getFiseMoveLabel(round.a.move, match.game_logic)}
-                        </span>
-                        {(match.game_logic.toLowerCase() === '0x4173a4e2e54727578fd50a3f1e721827c4c97c3a2824ca469c0ec730d4264b43' || match.game_logic.toLowerCase() === '0xec63afc7c67678adbe7a60af04d49031878d1e78eff9758b1b79edeb7546dfdf' || match.game_logic.toLowerCase() === '0x5f164061c4cbb981098161539f7f691650e0c245be54ade84ea5b57496955846') && round.a.salt && (
-                          <PokerHand player={match.player_a} matchId={match.match_id} move={round.a.move} round={round.round} playerA={match.player_a} saltA={round.a?.salt} saltB={round.b?.salt} logicId={match.game_logic} />
-                        )}
+                        <span className="text-3xl font-black text-blue-400 italic tracking-tight">{getFiseMoveLabel(round.a.move, match.game_logic)}</span>
+                        <PokerHand player={match.player_a} matchId={match.match_id} move={round.a.move} round={round.round} playerA={match.player_a} saltA={round.a?.salt} saltB={round.b?.salt} logicId={match.game_logic} />
                       </div>
                     ) : round.a?.revealed ? (
                       <span className="text-sm font-bold text-yellow-500 px-2 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded animate-pulse w-fit">REVEALED</span>
                     ) : round.a?.commit_hash ? (
                       <span className="text-sm font-bold text-zinc-500 px-2 py-1 bg-zinc-800 rounded w-fit">COMMITTED</span>
                     ) : (
-                      <span className="text-sm font-bold text-zinc-700 italic uppercase tracking-widest">
-                        {round.winner !== null ? 'NO ACTION' : 'WAITING...'}
-                      </span>
+                      <span className="text-sm font-bold text-zinc-700 italic uppercase tracking-widest">{round.winner !== null ? 'NO ACTION' : 'WAITING...'}</span>
                     )}
                   </div>
-
-                  {/* Player B's action */}
                   <div className="p-10 flex flex-col justify-center gap-4">
                     <span className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Player B</span>
                     {round.b?.revealed && round.b?.move != null ? (
                       <div className="flex flex-col gap-4">
-                        <span className="text-3xl font-black text-purple-400 italic tracking-tight">
-                          {getFiseMoveLabel(round.b.move, match.game_logic)}
-                        </span>
-                        {(match.game_logic.toLowerCase() === '0x4173a4e2e54727578fd50a3f1e721827c4c97c3a2824ca469c0ec730d4264b43' || match.game_logic.toLowerCase() === '0xec63afc7c67678adbe7a60af04d49031878d1e78eff9758b1b79edeb7546dfdf' || match.game_logic.toLowerCase() === '0x5f164061c4cbb981098161539f7f691650e0c245be54ade84ea5b57496955846') && round.b.salt && (
-                          <PokerHand player={match.player_b} matchId={match.match_id} move={round.b.move} round={round.round} playerA={match.player_a} saltA={round.a?.salt} saltB={round.b?.salt} logicId={match.game_logic} />
-                        )}
+                        <span className="text-3xl font-black text-purple-400 italic tracking-tight">{getFiseMoveLabel(round.b.move, match.game_logic)}</span>
+                        <PokerHand player={match.player_b} matchId={match.match_id} move={round.b.move} round={round.round} playerA={match.player_a} saltA={round.a?.salt} saltB={round.b?.salt} logicId={match.game_logic} />
                       </div>
                     ) : round.b?.revealed ? (
                       <span className="text-sm font-bold text-yellow-500 px-2 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded animate-pulse w-fit">REVEALED</span>
                     ) : round.b?.commit_hash ? (
                       <span className="text-sm font-bold text-zinc-500 px-2 py-1 bg-zinc-800 rounded w-fit">COMMITTED</span>
                     ) : (
-                      <span className="text-sm font-bold text-zinc-700 italic uppercase tracking-widest">
-                        {round.winner !== null ? 'NO ACTION' : 'WAITING...'}
-                      </span>
+                      <span className="text-sm font-bold text-zinc-700 italic uppercase tracking-widest">{round.winner !== null ? 'NO ACTION' : 'WAITING...'}</span>
                     )}
                   </div>
                 </div>
