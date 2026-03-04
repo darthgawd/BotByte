@@ -15,15 +15,17 @@
   "license": "ISC",
   "packageManager": "pnpm@10.29.3",
   "dependencies": {
+    "@falken/shared-types": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@supabase/supabase-js": "^2.97.0",
     "dotenv": "^17.3.1",
+    "express": "^5.2.1",
     "pino": "^10.3.1",
-    "@falken/shared-types": "workspace:*",
     "viem": "^2.46.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^25.3.0",
     "typescript": "^5.9.3"
   }

@@ -12,6 +12,8 @@ process.stdout.write = ((chunk: any, encoding: any, callback: any) => {
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import express from 'express';
 
 import {
   CallToolRequestSchema,
@@ -199,6 +201,7 @@ export const TOOLS = [
   { name: 'get_leaderboard', description: 'Returns the top 10 agents by ELO rating.', inputSchema: { type: 'object' } },
   { name: 'list_available_games', description: 'Unified discovery for all games in the arena (Solidity + JavaScript). Returns addresses/CIDs and logic types.', inputSchema: { type: 'object' } },
   { name: 'spawn_hosted_agent', description: 'Step 1 (Factory): Generate a new hosted agent with an encrypted wallet.', inputSchema: { type: 'object', properties: { nickname: { type: 'string' }, archetype: { type: 'string' }, llmTier: { type: 'string' }, managerAddress: { type: 'string' } }, required: ['nickname', 'archetype', 'llmTier', 'managerAddress'] } },
+  { name: 'get_agent_directives', description: 'Checks for manual commands from the manager (e.g. FOLD, STAY, AGGRESSIVE).', inputSchema: { type: 'object', properties: { agentAddress: { type: 'string' } }, required: ['agentAddress'] } },
   { name: 'execute_transaction', description: 'Autonomous Step: Signs and broadcasts a transaction prepared by any prep_ tool using the local AGENT_PRIVATE_KEY. Only use this if you want to act autonomously.', inputSchema: { type: 'object', properties: { to: { type: 'string' }, data: { type: 'string' }, value: { type: 'string' }, gasLimit: { type: 'string' } }, required: ['to', 'data'] } },
   { name: 'ping', description: 'Simple connection test.', inputSchema: { type: 'object', properties: { message: { type: 'string' } } } },
 ];
@@ -566,6 +569,20 @@ export async function handleToolCall(name: string, args: any) {
     };
   }
 
+  if (name === 'get_agent_directives') {
+    const { agentAddress } = (args || {}) as { agentAddress: string };
+    const { data, error } = await supabase
+      .from('agent_directives')
+      .select('*')
+      .eq('agent_address', agentAddress.toLowerCase())
+      .eq('status', 'PENDING')
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(`Failed to fetch directives: ${error.message}`);
+    return data || [];
+  }
+
   if (name === 'execute_transaction') {
     if (!walletClient || !agentAccount) throw new Error('AGENT_PRIVATE_KEY not configured on server');
     const { to, data, value, gasLimit } = (args || {}) as { to: `0x${string}`; data: `0x${string}`; value?: string; gasLimit?: string };
@@ -612,9 +629,36 @@ async function main() {
   );
 
   if (isDirectRun) {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error('FALKEN MCP Server running on stdio');
+    const transportType = process.env.MCP_TRANSPORT || 'stdio';
+
+    if (transportType === 'sse') {
+      const app = express();
+      const port = process.env.PORT || 3001;
+
+      let transport: SSEServerTransport | null = null;
+
+      app.get('/sse', async (req, res) => {
+        transport = new SSEServerTransport('/messages', res);
+        await server.connect(transport);
+        logger.info('FALKEN MCP Server connected via SSE');
+      });
+
+      app.post('/messages', async (req, res) => {
+        if (transport) {
+          await transport.handlePostMessage(req, res);
+        } else {
+          res.status(400).send('No active SSE connection');
+        }
+      });
+
+      app.listen(port, () => {
+        logger.info(`FALKEN MCP Server listening on port ${port} (SSE)`);
+      });
+    } else {
+      const transport = new StdioServerTransport();
+      await server.connect(transport);
+      console.error('FALKEN MCP Server running on stdio');
+    }
   }
 }
 
