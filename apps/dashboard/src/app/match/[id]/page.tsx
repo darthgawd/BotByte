@@ -6,6 +6,7 @@ import { Navbar } from '@/components/Navbar';
 import { ChevronLeft, Swords, Shield, Trophy, Hash, Clock, Copy, CheckCircle2, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
+import { PokerTable } from '@/components/PokerTable';
 
 interface Match {
   match_id: string;
@@ -76,90 +77,16 @@ const HAND_LABELS = [
   "Straight", "Flush", "Full House", "Four of a Kind", "Straight Flush"
 ];
 
-const PokerHand = ({ player, matchId, move, round, playerA, saltA, saltB, logicId }: { player: string, matchId: string, move: number | string, round: number, playerA: string, saltA?: string, saltB?: string, logicId: string }) => {
-  // 1. Generate deck identically to poker.js
-  const generateDeck = (seedStr: string) => {
-    let hash = 0;
-    for (let i = 0; i < seedStr.length; i++) {
-      hash = ((hash << 5) - hash) + seedStr.charCodeAt(i);
-      hash |= 0;
-    }
-    const deck = Array.from({ length: 52 }, (_, i) => i);
-    for (let i = deck.length - 1; i > 0; i--) {
-      hash = (Math.imul(1664525, hash) + 1013904223) | 0;
-      const j = Math.abs(hash % (i + 1));
-      [deck[i], deck[j]] = [deck[j], deck[i]];
-    }
-    return deck;
-  };
-
-  const getHandRank = (hand: number[]) => {
-    const ranks = hand.map(c => c % 13).sort((a, b) => b - a);
-    const suits = hand.map(c => Math.floor(c / 13));
-    const counts: Record<number, number> = {};
-    ranks.forEach(r => counts[r] = (counts[r] || 0) + 1);
-    const sortedCounts = Object.entries(counts)
-      .map(([rank, count]) => [Number(rank), count])
-      .sort((a, b) => b[1] - a[1] || b[0] - a[0]);
-    const isFlush = new Set(suits).size === 1;
-    let isStraight = ranks.every((r, i) => i === 0 || ranks[i-1] - r === 1);
-    if (!isStraight && ranks[0] === 12 && ranks[1] === 3 && ranks[2] === 2 && ranks[3] === 1 && ranks[4] === 0) isStraight = true;
-
-    if (isStraight && isFlush) return 8;
-    if (sortedCounts[0][1] === 4) return 7;
-    if (sortedCounts[0][1] === 3 && sortedCounts[1][1] === 2) return 6;
-    if (isFlush) return 5;
-    if (isStraight) return 4;
-    if (sortedCounts[0][1] === 3) return 3;
-    if (sortedCounts[0][1] === 2 && sortedCounts[1][1] === 2) return 2;
-    if (sortedCounts[0][1] === 2) return 1;
-    return 0;
-  };
-
-  // 2. Determine Seed based on Logic Version
-  const cleanLogicId = logicId.toLowerCase();
-  const pokerLogicIdV6 = '0x5f164061c4cbb981098161539f7f691650e0c245be54ade84ea5b57496955846';
-  
-  // FIX: Use numerical matchId to match poker.js and bot logic seed
-  const numericalId = matchId.split('-').pop() || matchId;
-  let seed = numericalId + "_" + round;
-  if (cleanLogicId === pokerLogicIdV6) {
-    // BLIND DECK protocol (V6)
-    seed = numericalId + "_" + round + "_" + (saltA || "") + "_" + (saltB || "");
-  }
-
-  const deck = generateDeck(seed);
-  const isA = player.toLowerCase() === playerA.toLowerCase();
-  const initialHandOffset = isA ? 0 : 5;
-  const initialHand = deck.slice(initialHandOffset, initialHandOffset + 5);
-  
-  const discardIndices = move.toString() === '99' ? [] : move.toString().split('').map(Number);
-  
-  let finalHand = [...initialHand];
-  const replacementOffset = isA ? 10 : 15;
-  discardIndices.forEach((idx, i) => { 
-    if (idx >= 0 && idx < 5) finalHand[idx] = deck[replacementOffset + i]; 
-  });
-
-  const handRank = getHandRank(finalHand);
-
-  return (
-    <div className="flex flex-col gap-2 scale-110 origin-left mt-2">
-      <div className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] bg-white/5 w-fit px-2 py-0.5 rounded-sm mb-1 border border-white/5 italic">
-        {HAND_LABELS[handRank]}
-      </div>
-      <div className="flex gap-3 bg-black/40 p-4 rounded-2xl border border-zinc-800/50">
-        {finalHand.map((cid, i) => (
-          <CardDisplay key={i} cardId={cid} />
-        ))}
-      </div>
-    </div>
-  );
-};
-
 const RPS_LOGIC = (process.env.NEXT_PUBLIC_RPS_LOGIC_ADDRESS || '').toLowerCase();
 const DICE_LOGIC = (process.env.NEXT_PUBLIC_DICE_LOGIC_ADDRESS || '').toLowerCase();
 const ESCROW_ADDRESS = (process.env.NEXT_PUBLIC_ESCROW_ADDRESS || '').toLowerCase();
+
+const POKER_LOGIC_IDS = [
+  '0x4173a4e2e54727578fd50a3f1e721827c4c97c3a2824ca469c0ec730d4264b43',
+  '0xec63afc7c67678adbe7a60af04d49031878d1e78eff9758b1b79edeb7546dfdf',
+  '0x5f164061c4cbb981098161539f7f691650e0c245be54ade84ea5b57496955846',
+  '0x61266711df04ebe17432b3482471e64c69150e370a9c558657b28944233b97d1'
+].map(id => id.toLowerCase());
 
 export default function MatchDetail({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -315,10 +242,6 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
 
           <div className="flex gap-12">
             <div className="text-right">
-              <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1">Prize Pool</p>
-              <p className="text-xl font-bold text-white tracking-tight">{(Number(match.stake_wei || 0) * 2 / 1e18).toFixed(5)} ETH</p>
-            </div>
-            <div className="text-right">
               <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1">Phase</p>
               <p className={`text-xl font-bold tracking-tight ${match.status === 'SETTLED' ? 'text-green-500' : 'text-blue-500'}`}>
                 {match.status === 'SETTLED' ? 'COMPLETE' : match.phase}
@@ -372,37 +295,57 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
                     {round.winner === 0 ? 'DRAW' : round.winner === 1 ? 'PLAYER A WON' : round.winner === 2 ? 'PLAYER B WON' : 'IN PROGRESS'}
                   </span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-zinc-800 min-h-[320px]">
-                  <div className="p-10 flex flex-col justify-center gap-4">
-                    <span className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Player A</span>
-                    {round.a?.revealed && round.a?.move != null ? (
-                      <div className="flex flex-col gap-4">
-                        <span className="text-3xl font-black text-blue-400 italic tracking-tight">{getFiseMoveLabel(round.a.move, match.game_logic)}</span>
-                        <PokerHand player={match.player_a} matchId={match.match_id} move={round.a.move} round={round.round} playerA={match.player_a} saltA={round.a?.salt} saltB={round.b?.salt} logicId={match.game_logic} />
+                <div className={`grid grid-cols-1 ${POKER_LOGIC_IDS.includes(match.game_logic?.toLowerCase()) ? '' : 'md:grid-cols-2 divide-y md:divide-y-0 md:divide-x'} divide-zinc-800 min-h-[320px]`}>
+                  {POKER_LOGIC_IDS.includes(match.game_logic?.toLowerCase()) ? (
+                    <div className="p-4 sm:p-10">
+                      <PokerTable 
+                        matchId={match.match_id}
+                        playerA={match.player_a}
+                        playerB={match.player_b}
+                        round={round.round}
+                        logicId={match.game_logic}
+                        playerAMove={round.a?.move}
+                        playerBMove={round.b?.move}
+                        playerASalt={round.a?.salt}
+                        playerBSalt={round.b?.salt}
+                        playerANickname={nicknames[match.player_a.toLowerCase()]}
+                        playerBNickname={match.player_b ? nicknames[match.player_b.toLowerCase()] : undefined}
+                        isShowdown={round.a?.revealed && round.b?.revealed}
+                        winner={round.winner}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="p-10 flex flex-col justify-center gap-4">
+                        <span className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Player A</span>
+                        {round.a?.revealed && round.a?.move != null ? (
+                          <div className="flex flex-col gap-4">
+                            <span className="text-3xl font-black text-blue-400 italic tracking-tight">{getFiseMoveLabel(round.a.move, match.game_logic)}</span>
+                          </div>
+                        ) : round.a?.revealed ? (
+                          <span className="text-sm font-bold text-yellow-500 px-2 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded animate-pulse w-fit">REVEALED</span>
+                        ) : round.a?.commit_hash ? (
+                          <span className="text-sm font-bold text-zinc-500 px-2 py-1 bg-zinc-800 rounded w-fit">COMMITTED</span>
+                        ) : (
+                          <span className="text-sm font-bold text-zinc-700 italic uppercase tracking-widest">{round.winner !== null ? 'NO ACTION' : 'WAITING...'}</span>
+                        )}
                       </div>
-                    ) : round.a?.revealed ? (
-                      <span className="text-sm font-bold text-yellow-500 px-2 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded animate-pulse w-fit">REVEALED</span>
-                    ) : round.a?.commit_hash ? (
-                      <span className="text-sm font-bold text-zinc-500 px-2 py-1 bg-zinc-800 rounded w-fit">COMMITTED</span>
-                    ) : (
-                      <span className="text-sm font-bold text-zinc-700 italic uppercase tracking-widest">{round.winner !== null ? 'NO ACTION' : 'WAITING...'}</span>
-                    )}
-                  </div>
-                  <div className="p-10 flex flex-col justify-center gap-4">
-                    <span className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Player B</span>
-                    {round.b?.revealed && round.b?.move != null ? (
-                      <div className="flex flex-col gap-4">
-                        <span className="text-3xl font-black text-purple-400 italic tracking-tight">{getFiseMoveLabel(round.b.move, match.game_logic)}</span>
-                        <PokerHand player={match.player_b} matchId={match.match_id} move={round.b.move} round={round.round} playerA={match.player_a} saltA={round.a?.salt} saltB={round.b?.salt} logicId={match.game_logic} />
+                      <div className="p-10 flex flex-col justify-center gap-4">
+                        <span className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Player B</span>
+                        {round.b?.revealed && round.b?.move != null ? (
+                          <div className="flex flex-col gap-4">
+                            <span className="text-3xl font-black text-purple-400 italic tracking-tight">{getFiseMoveLabel(round.b.move, match.game_logic)}</span>
+                          </div>
+                        ) : round.b?.revealed ? (
+                          <span className="text-sm font-bold text-yellow-500 px-2 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded animate-pulse w-fit">REVEALED</span>
+                        ) : round.b?.commit_hash ? (
+                          <span className="text-sm font-bold text-zinc-500 px-2 py-1 bg-zinc-800 rounded w-fit">COMMITTED</span>
+                        ) : (
+                          <span className="text-sm font-bold text-zinc-700 italic uppercase tracking-widest">{round.winner !== null ? 'NO ACTION' : 'WAITING...'}</span>
+                        )}
                       </div>
-                    ) : round.b?.revealed ? (
-                      <span className="text-sm font-bold text-yellow-500 px-2 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded animate-pulse w-fit">REVEALED</span>
-                    ) : round.b?.commit_hash ? (
-                      <span className="text-sm font-bold text-zinc-500 px-2 py-1 bg-zinc-800 rounded w-fit">COMMITTED</span>
-                    ) : (
-                      <span className="text-sm font-bold text-zinc-700 italic uppercase tracking-widest">{round.winner !== null ? 'NO ACTION' : 'WAITING...'}</span>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </div>
               </div>
             ))}

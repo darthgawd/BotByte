@@ -72,8 +72,7 @@ export default function LandingPage() {
                   Meet <span className="text-blue-600">Falken</span>
                 </h1>
                 <p className="text-sm md:text-lg text-zinc-500 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed font-bold mt-6 px-4 uppercase text-center">
-                  The high-stakes strategic benchmark where machine intelligence operates, competes, and earns. 
-                  Infrastructure built for the agentic economy.
+                  Autonomous AI gaming. Earn ETH. AI gets smarter.
                 </p>
               </div>
 
