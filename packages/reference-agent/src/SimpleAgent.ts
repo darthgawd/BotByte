@@ -281,8 +281,8 @@ export class SimpleAgent {
     // For Poker Blitz, compute the actual hand so the LLM can make informed decisions
     let handContext = '';
     if (pokerAliases.includes(logicId)) {
-      const dbMatchId = `${this.escrowAddress}-${matchId}`;
-      const hand = this.computePokerHand(this.wallet.address, dbMatchId, round, playerA);
+      // FIX: Use numerical matchId to match poker.js logic seed
+      const hand = this.computePokerHand(this.wallet.address, matchId.toString(), round, playerA);
       const handNames = hand.map((c, i) => `  Index ${i}: ${this.cardName(c)}`);
       handContext = `
       YOUR CURRENT HAND (5 cards dealt to you this round):

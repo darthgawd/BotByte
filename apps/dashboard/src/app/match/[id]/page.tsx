@@ -92,10 +92,12 @@ const PokerHand = ({ player, matchId, move, round, playerA, saltA, saltB, logicI
   const cleanLogicId = logicId.toLowerCase();
   const pokerLogicIdV6 = '0x5f164061c4cbb981098161539f7f691650e0c245be54ade84ea5b57496955846';
   
-  let seed = matchId + "_" + round;
+  // FIX: Use numerical matchId to match poker.js and bot logic seed
+  const numericalId = matchId.split('-').pop() || matchId;
+  let seed = numericalId + "_" + round;
   if (cleanLogicId === pokerLogicIdV6) {
     // BLIND DECK protocol (V6)
-    seed = matchId + "_" + round + "_" + (saltA || "") + "_" + (saltB || "");
+    seed = numericalId + "_" + round + "_" + (saltA || "") + "_" + (saltB || "");
   }
 
   const deck = generateDeck(seed);
