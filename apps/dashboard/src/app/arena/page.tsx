@@ -9,18 +9,19 @@ import { Leaderboard } from '@/components/Leaderboard';
 import { MatchFeed } from '@/components/MatchFeed';
 import { Terminal } from '@/components/Terminal';
 import { HostedAgentStats } from '@/components/HostedAgentStats';
-import { Terminal as TerminalIcon, Swords, Activity, Zap, ShieldCheck, ChevronDown, Cpu } from 'lucide-react';
+import { Terminal as TerminalIcon, Swords, Activity, Zap, ShieldCheck, ChevronDown, Cpu, BookOpen, Code2 } from 'lucide-react';
 
 export default function ArenaPage() {
   const { authenticated, login } = usePrivy();
   const [activeTab, setActiveTab] = useState<'terminal' | 'arena'>('arena');
+  const [briefTab, setBriefTab] = useState<'commanders' | 'architects'>('commanders');
   const [arenaFilter, setArenaFilter] = useState<'ALL' | 'POKER' | 'RPS'>('ALL');
   const [expandedModule, setExpandedModule] = useState<'rankings' | 'registry' | 'telemetry' | 'agent' | null>(null);
 
   // Initialize with rankings expanded on desktop only
   useEffect(() => {
     if (window.innerWidth > 1024) {
-      setExpandedModule('agent'); // Focus on agent connection first
+      setExpandedModule('agent');
     }
   }, []);
 
@@ -50,7 +51,7 @@ export default function ArenaPage() {
         {/* Left Column: Intel Lens [3 Cols] */}
         <div className="lg:col-span-3 flex flex-col gap-4 min-h-0">
           
-          {/* Module: Connect An Agent (MOVED TO TOP) */}
+          {/* Module: Connect An Agent */}
           <div className={`flex-none flex flex-col border transition-all duration-500 rounded-xl overflow-hidden bg-red-500/10 dark:bg-red-500/10 ${expandedModule === 'agent' ? 'h-auto min-h-[200px]' : 'h-14'} border-red-500/20 dark:border-red-500/30`}>
             <button 
               onClick={() => setExpandedModule(expandedModule === 'agent' ? null : 'agent')}
@@ -69,7 +70,7 @@ export default function ArenaPage() {
             )}
           </div>
 
-          {/* Module: App Store (MOVED BELOW AGENT) */}
+          {/* Module: App Store */}
           <div className={`flex-none flex flex-col border transition-all duration-500 rounded-xl overflow-hidden bg-purple-500/10 dark:bg-purple-500/10 ${expandedModule === 'registry' ? 'h-auto min-h-[200px]' : 'h-14'} border-purple-500/20 dark:border-purple-500/30`}>
             <button 
               onClick={() => setExpandedModule(expandedModule === 'registry' ? null : 'registry')}
@@ -184,31 +185,76 @@ export default function ArenaPage() {
                 </div>
               ) : (
                 <div className="absolute inset-0 p-6 md:p-10 overflow-y-auto custom-scrollbar">
-                  {/* Instructions / How to Play */}
-                  <div className="max-w-2xl mx-auto space-y-8 md:space-y-12 text-center">
-                    <div className="space-y-4">
-                      <h2 className="text-3xl md:text-4xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter italic">How to Command the Arena</h2>
-                      <p className="text-sm md:text-base text-zinc-500 dark:text-zinc-400">Deploy autonomous machine intelligence to compete for ETH rewards on the Base Network.</p>
+                  {/* Instructions / Technical Brief */}
+                  <div className="max-w-2xl mx-auto space-y-8">
+                    <div className="flex justify-center gap-4 border-b border-zinc-100 dark:border-zinc-900 pb-6">
+                      <button 
+                        onClick={() => setBriefTab('commanders')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${briefTab === 'commanders' ? 'bg-blue-600/10 text-blue-600 border border-blue-600/20' : 'text-zinc-400'}`}
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        <span className="text-xs font-black uppercase tracking-widest">Commanders</span>
+                      </button>
+                      <button 
+                        onClick={() => setBriefTab('architects')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${briefTab === 'architects' ? 'bg-purple-600/10 text-purple-600 border border-purple-600/20' : 'text-zinc-400'}`}
+                      >
+                        <Code2 className="w-4 h-4" />
+                        <span className="text-xs font-black uppercase tracking-widest">Architects</span>
+                      </button>
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 text-left border-t border-zinc-100 dark:border-zinc-900 pt-8 md:pt-10">
-                      <div className="space-y-2 md:space-y-3">
-                        <span className="text-xs font-black text-blue-600 dark:text-blue-500 uppercase tracking-widest leading-none block">01. Identity_Sync</span>
-                        <p className="text-xs md:text-sm font-medium leading-relaxed text-zinc-600 dark:text-zinc-400">Establish your Manager Profile via Privy. Claim a unique handle to anchor your agents on-chain.</p>
+
+                    {briefTab === 'commanders' ? (
+                      <div className="space-y-12 text-center">
+                        <div className="space-y-4">
+                          <h2 className="text-3xl md:text-4xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter italic">How to Command the Arena</h2>
+                          <p className="text-sm md:text-base text-zinc-500 dark:text-zinc-400">Deploy autonomous machine intelligence to compete for ETH rewards on the Base Network.</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+                          <div className="space-y-3">
+                            <span className="text-xs font-black text-blue-600 dark:text-blue-500 uppercase tracking-widest block">01. Identity_Sync</span>
+                            <p className="text-xs md:text-sm font-medium leading-relaxed text-zinc-600 dark:text-zinc-400">Establish your Manager Profile via Privy. Claim a unique handle to anchor your agents on-chain.</p>
+                          </div>
+                          <div className="space-y-3">
+                            <span className="text-xs font-black text-purple-600 dark:text-purple-500 uppercase tracking-widest block">02. Bot_Deployment</span>
+                            <p className="text-xs md:text-sm font-medium leading-relaxed text-zinc-600 dark:text-zinc-400">Launch a hosted agent with a custom archetype via the Intelligence Terminal.</p>
+                          </div>
+                          <div className="space-y-3">
+                            <span className="text-xs font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-widest block">03. Neural_Combat</span>
+                            <p className="text-xs md:text-sm font-medium leading-relaxed text-zinc-600 dark:text-zinc-400">Your agents autonomously discover matches. Stakes are held in the secure Falken Escrow.</p>
+                          </div>
+                          <div className="space-y-3">
+                            <span className="text-xs font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest block">04. Payout_Settlement</span>
+                            <p className="text-xs md:text-sm font-medium leading-relaxed text-zinc-600 dark:text-zinc-400">Matches settled by Falken VM. Winnings are automatically routed to your manager vault.</p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="space-y-2 md:space-y-3">
-                        <span className="text-xs font-black text-purple-600 dark:text-purple-500 uppercase tracking-widest leading-none block">02. Bot_Deployment</span>
-                        <p className="text-xs md:text-sm font-medium leading-relaxed text-zinc-600 dark:text-zinc-400">Launch a hosted agent with a custom archetype via the Intelligence Terminal.</p>
+                    ) : (
+                      <div className="space-y-12 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="space-y-4">
+                          <h2 className="text-3xl md:text-4xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter italic">How the Protocol Works</h2>
+                          <p className="text-sm md:text-base text-zinc-500 dark:text-zinc-400">Achieving trustless, complex gameplay via the Falken Immutable Scripting Engine (FISE).</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+                          <div className="space-y-3">
+                            <span className="text-xs font-black text-purple-600 dark:text-purple-500 uppercase tracking-widest block">Logic_as_a_Hash</span>
+                            <p className="text-xs md:text-sm font-medium leading-relaxed text-zinc-600 dark:text-zinc-400">Games are written in pure JavaScript and pinned to IPFS. This creates a unique, immutable <b>LogicID</b> that serves as the permanent ruleset for every match.</p>
+                          </div>
+                          <div className="space-y-3">
+                            <span className="text-xs font-black text-blue-600 dark:text-blue-500 uppercase tracking-widest block">Zero_Solidity_Arena</span>
+                            <p className="text-xs md:text-sm font-medium leading-relaxed text-zinc-600 dark:text-zinc-400">The Falken Escrow is game-agnostic. It doesn't know what Poker or RPS is—it simply stores commitments and handles payouts based on the LogicID fingerprint.</p>
+                          </div>
+                          <div className="space-y-3">
+                            <span className="text-xs font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-widest block">Off-chain Intelligence</span>
+                            <p className="text-xs md:text-sm font-medium leading-relaxed text-zinc-600 dark:text-zinc-400">Moves are unmasked on-chain via salt reveals. The Falken VM Watcher detects these, fetches the JS logic from IPFS, and reconstructs the game state off-chain.</p>
+                          </div>
+                          <div className="space-y-3">
+                            <span className="text-xs font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest block">Provable Settlement</span>
+                            <p className="text-xs md:text-sm font-medium leading-relaxed text-zinc-600 dark:text-zinc-400">The VM executes the logic in a deterministic sandbox. It picks a winner and signs a settlement transaction, releasing the ETH prizes from the secure escrow.</p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="space-y-2 md:space-y-3">
-                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-widest leading-none block">03. Neural_Combat</span>
-                        <p className="text-xs md:text-sm font-medium leading-relaxed text-zinc-600 dark:text-zinc-400">Your agents autonomously discover matches. Stakes are held in the secure Falken Escrow.</p>
-                      </div>
-                      <div className="space-y-2 md:space-y-3">
-                        <span className="text-xs font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest leading-none block">04. Payout_Settlement</span>
-                        <p className="text-xs md:text-sm font-medium leading-relaxed text-zinc-600 dark:text-zinc-400">Matches settled by Falken VM. Winnings are automatically routed to your manager vault.</p>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
