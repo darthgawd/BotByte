@@ -14,6 +14,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import express from 'express';
+import cors from 'cors';
 
 import {
   CallToolRequestSchema,
@@ -610,55 +611,165 @@ export async function handleToolCall(name: string, args: any) {
 
 export const server = new Server({ name: 'falken-protocol', version: '0.1.0' }, { capabilities: { tools: {} } });
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  logger.info('Handling ListTools request');
+  return { tools: TOOLS };
+});
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
+    logger.info({ tool: request.params.name }, 'Executing tool call');
     const result = await handleToolCall(request.params.name, request.params.arguments);
+    logger.info({ tool: request.params.name }, 'Tool call completed');
     return { content: [{ type: 'text', text: JSON.stringify(result) }] };
   } catch (error: any) {
+    logger.error({ tool: request.params.name, error: error.message }, 'Tool call failed');
     return { content: [{ type: 'text', text: `Error: ${error.message}` }], isError: true };
   }
 });
 
 async function main() {
-  const isDirectRun = process.argv[1] && (
-    process.argv[1].endsWith('index.js') || 
-    process.argv[1].endsWith('mcp-server/dist/index.js') ||
-    process.argv[1].endsWith('mcp-server/src/index.ts')
-  );
+  const transportType = process.env.MCP_TRANSPORT || 'stdio';
 
-  if (isDirectRun) {
-    const transportType = process.env.MCP_TRANSPORT || 'stdio';
+  if (transportType === 'sse') {
+    const app = express();
+    app.use(cors({ origin: '*', credentials: true }));
+    
+    // DON'T use express.json() globally - it interferes with raw body handling
+    // The SDK needs raw body for signature verification
+    const port = process.env.PORT || 3001;
+    const FALKEN_API_KEY = process.env.FALKEN_API_KEY || 'falken_dev_key_123';
 
-    if (transportType === 'sse') {
-      const app = express();
-      const port = process.env.PORT || 3001;
+    // Auth Middleware (Permissive for testing)
+    app.use((req, res, next) => {
+      logger.info({ method: req.method, path: req.path, query: req.query, origin: req.headers.origin }, 'Inbound request');
+      next();
+    });
 
-      let transport: SSEServerTransport | null = null;
+    // Map to store transports by sessionId - supports multiple concurrent connections
+    const transports = new Map<string, SSEServerTransport>();
 
-      app.get('/sse', async (req, res) => {
-        transport = new SSEServerTransport('/messages', res);
-        await server.connect(transport);
-        logger.info('FALKEN MCP Server connected via SSE');
-      });
-
-      app.post('/messages', async (req, res) => {
-        if (transport) {
-          await transport.handlePostMessage(req, res);
-        } else {
-          res.status(400).send('No active SSE connection');
+    app.get('/sse', async (req, res) => {
+      try {
+        logger.info('Received SSE connection request');
+        
+        const transport = new SSEServerTransport('/messages', res);
+        const sessionId = transport.sessionId;
+        
+        // Store transport by sessionId
+        transports.set(sessionId, transport);
+        logger.info({ sessionId }, 'SSE transport created');
+        
+        // Connect server to this transport
+        // Note: The MCP SDK server can only connect to ONE transport at a time
+        // For multi-client support, we'd need to create separate server instances
+        // or use a different architecture
+        try {
+          await server.connect(transport);
+          logger.info({ sessionId }, 'FALKEN MCP Server connected via SSE');
+        } catch (connErr: any) {
+          if (connErr.message?.includes('Already connected')) {
+            logger.warn({ sessionId }, 'Server already connected, client will need to retry');
+            transports.delete(sessionId);
+            res.status(503).send('Server busy - already serving another client');
+            return;
+          } else {
+            throw connErr;
+          }
         }
-      });
 
-      app.listen(port, () => {
-        logger.info(`FALKEN MCP Server listening on port ${port} (SSE)`);
+        // Keep-alive ping every 30 seconds to prevent timeout
+        const keepAliveInterval = setInterval(() => {
+          if (!res.writableEnded) {
+            res.write(':ping\n\n');
+          }
+        }, 30000);
+
+        res.on('close', () => {
+          logger.info({ sessionId, writableEnded: res.writableEnded, destroyed: res.destroyed }, 'SSE client disconnected');
+          clearInterval(keepAliveInterval);
+          transports.delete(sessionId);
+          // Note: We don't disconnect the server here - it can only connect to one transport
+          // The next client connection will handle reconnection
+        });
+
+        res.on('error', (err) => {
+          logger.error({ sessionId, error: err.message }, 'SSE connection error');
+          clearInterval(keepAliveInterval);
+          transports.delete(sessionId);
+        });
+        
+        res.on('finish', () => {
+          logger.info({ sessionId }, 'SSE response finished');
+        });
+        
+        // Log when headers are sent
+        const originalWriteHead = res.writeHead.bind(res);
+        res.writeHead = function(statusCode: number, ...rest: any[]) {
+          logger.info({ sessionId, statusCode }, 'SSE response writeHead called');
+          return originalWriteHead(statusCode, ...rest);
+        };
+
+      } catch (err: any) {
+        logger.error({ 
+          message: err.message, 
+          stack: err.stack,
+          code: err.code 
+        }, 'Failed to connect SSE transport');
+        res.status(500).send(`Internal Server Error: ${err.message}`);
+      }
+    });
+
+    // IMPORTANT: Handle raw body for this endpoint
+    // The SDK needs to read the raw stream
+    app.post('/messages', async (req, res) => {
+      const sessionId = req.query.sessionId as string;
+      
+      if (!sessionId) {
+        res.status(400).send('Missing sessionId query parameter');
+        return;
+      }
+
+      const transport = transports.get(sessionId);
+      
+      if (!transport) {
+        logger.warn({ sessionId }, 'No transport found for session');
+        res.status(400).send('No active SSE connection for this session');
+        return;
+      }
+
+      try {
+        logger.info({ sessionId, contentType: req.headers['content-type'] }, 'Handling POST message');
+        
+        // The SDK reads the request stream directly
+        await transport.handlePostMessage(req, res);
+        
+        logger.info({ sessionId, headersSent: res.headersSent }, 'POST message handled');
+      } catch (err: any) {
+        logger.error({ sessionId, error: err.message, stack: err.stack }, 'Error handling POST message');
+        if (!res.headersSent) {
+          res.status(500).json({ error: err.message });
+        }
+      }
+    });
+
+    // Health check endpoint
+    app.get('/health', (req, res) => {
+      res.json({ 
+        status: 'ok', 
+        connectedClients: transports.size,
+        timestamp: new Date().toISOString()
       });
-    } else {
-      const transport = new StdioServerTransport();
-      await server.connect(transport);
-      console.error('FALKEN MCP Server running on stdio');
-    }
+    });
+
+    app.listen(port, () => {
+      logger.info(`FALKEN MCP Server listening on port ${port} (SSE)`);
+      logger.info(`Health check: http://localhost:${port}/health`);
+    });
+  } else {
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error('FALKEN MCP Server running on stdio');
   }
 }
 
