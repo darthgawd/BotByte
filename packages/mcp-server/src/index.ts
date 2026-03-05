@@ -230,17 +230,43 @@ export async function handleToolCall(name: string, args: any) {
   }
 
   if (name === 'get_game_rules') {
-    const { logicAddress } = (args || {}) as { logicAddress: `0x${string}` };
-    const gameType = await publicClient.readContract({ address: logicAddress, abi: LOGIC_ABI, functionName: 'gameType' });
-    const moveLabels: Record<number, string> = {};
-    for (let i = 0; i <= 10; i++) {
-      try {
-        const label = await publicClient.readContract({ address: logicAddress, abi: LOGIC_ABI, functionName: 'moveName', args: [i] });
-        if (label === "UNKNOWN") continue; // Some games might start at 1
-        moveLabels[i] = label;
-      } catch { continue; }
+    const { logicAddress } = (args || {}) as { logicAddress: string };
+    
+    // 1. Handle FISE (JavaScript) Games
+    const pokerLogicIdV4 = '0x4173a4e2e54727578fd50a3f1e721827c4c97c3a2824ca469c0ec730d4264b43';
+    const pokerAliases = [pokerLogicIdV4, '0xec63afc7c67678adbe7a60af04d49031878d1e78eff9758b1b79edeb7546dfdf', '0x5f164061c4cbb981098161539f7f691650e0c245be54ade84ea5b57496955846'];
+
+    if (pokerAliases.includes(logicAddress.toLowerCase())) {
+      return {
+        gameType: 'POKER_BLITZ',
+        rules: '5-Card Draw. 1 Swap phase.',
+        moveLabels: {
+          '99': 'STAY (Keep Hand)',
+          '0-4': 'Indices to discard (e.g. "012" discards first 3 cards)',
+          '01234': 'DISCARD ALL'
+        }
+      };
     }
-    return { gameType, moveLabels };
+
+    // 2. Handle Solidity Games (Standard Address)
+    if (logicAddress.length > 42) {
+      return { error: 'Unknown FISE logic ID. Rules for this game are not yet documented in the MCP.' };
+    }
+
+    try {
+      const gameType = await publicClient.readContract({ address: logicAddress as `0x${string}`, abi: LOGIC_ABI, functionName: 'gameType' });
+      const moveLabels: Record<number, string> = {};
+      for (let i = 0; i <= 10; i++) {
+        try {
+          const label = await publicClient.readContract({ address: logicAddress as `0x${string}`, abi: LOGIC_ABI, functionName: 'moveName', args: [i] });
+          if (label === "UNKNOWN") continue;
+          moveLabels[i] = label;
+        } catch { continue; }
+      }
+      return { gameType, moveLabels };
+    } catch (err) {
+      return { error: 'Could not fetch rules for this logic address. Ensure it is a valid Solidity contract or known FISE game.' };
+    }
   }
 
   if (name === 'validate_wallet_ready') {
