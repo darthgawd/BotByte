@@ -158,7 +158,6 @@ async function enrichMatchesWithNicknames(matches: any[]) {
 }
 
 const ESCROW_ABI = [
-  { name: 'createMatch', type: 'function', stateMutability: 'payable', inputs: [{ name: '_stake', type: 'uint256' }, { name: '_gameLogic', type: 'address' }], outputs: [] },
   { name: 'createFiseMatch', type: 'function', stateMutability: 'payable', inputs: [{ name: 'stake', type: 'uint256' }, { name: 'logicId', type: 'bytes32' }], outputs: [] },
   { name: 'joinMatch', type: 'function', stateMutability: 'payable', inputs: [{ name: '_matchId', type: 'uint256' }], outputs: [] },
   { name: 'commitMove', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: '_matchId', type: 'uint256' }, { name: '_commitHash', type: 'bytes32' }], outputs: [] },
@@ -166,12 +165,6 @@ const ESCROW_ABI = [
   { name: 'claimTimeout', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: '_matchId', type: 'uint256' }], outputs: [] },
   { name: 'mutualTimeout', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: '_matchId', type: 'uint256' }], outputs: [] },
   { name: 'withdraw', type: 'function', stateMutability: 'nonpayable', inputs: [], outputs: [] },
-  { name: 'approveGameLogic', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: '_logic', type: 'address' }, { name: '_approved', type: 'bool' }], outputs: [] },
-] as const;
-
-const LOGIC_ABI = [
-  { name: 'gameType', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'string' }] },
-  { name: 'moveName', type: 'function', stateMutability: 'pure', inputs: [{ name: 'move', type: 'uint8' }], outputs: [{ type: 'string' }] },
 ] as const;
 
 const LOGIC_REGISTRY_ABI = [
@@ -232,7 +225,7 @@ export async function handleToolCall(name: string, args: any) {
   if (name === 'get_game_rules') {
     const { logicAddress } = (args || {}) as { logicAddress: string };
     
-    // 1. Handle FISE (JavaScript) Games
+    // Handle FISE (JavaScript) Games
     const pokerLogicIdV4 = '0x4173a4e2e54727578fd50a3f1e721827c4c97c3a2824ca469c0ec730d4264b43';
     const pokerAliases = [pokerLogicIdV4, '0xec63afc7c67678adbe7a60af04d49031878d1e78eff9758b1b79edeb7546dfdf', '0x5f164061c4cbb981098161539f7f691650e0c245be54ade84ea5b57496955846'];
 
@@ -248,25 +241,7 @@ export async function handleToolCall(name: string, args: any) {
       };
     }
 
-    // 2. Handle Solidity Games (Standard Address)
-    if (logicAddress.length > 42) {
-      return { error: 'Unknown FISE logic ID. Rules for this game are not yet documented in the MCP.' };
-    }
-
-    try {
-      const gameType = await publicClient.readContract({ address: logicAddress as `0x${string}`, abi: LOGIC_ABI, functionName: 'gameType' });
-      const moveLabels: Record<number, string> = {};
-      for (let i = 0; i <= 10; i++) {
-        try {
-          const label = await publicClient.readContract({ address: logicAddress as `0x${string}`, abi: LOGIC_ABI, functionName: 'moveName', args: [i] });
-          if (label === "UNKNOWN") continue;
-          moveLabels[i] = label;
-        } catch { continue; }
-      }
-      return { gameType, moveLabels };
-    } catch (err) {
-      return { error: 'Could not fetch rules for this logic address. Ensure it is a valid Solidity contract or known FISE game.' };
-    }
+    return { error: 'Unknown FISE logic ID. Only JavaScript-based games are supported in the Falken Arena.' };
   }
 
   if (name === 'validate_wallet_ready') {
@@ -277,20 +252,10 @@ export async function handleToolCall(name: string, args: any) {
 
   if (name === 'find_matches') {
     const { gameType, stakeTier } = (args || {}) as { gameType?: string; stakeTier?: string };
-    let query = supabase.from('matches').select('*').eq('status', 'OPEN');
+    let query = supabase.from('matches').select('*').eq('status', 'OPEN').eq('is_fise', true);
     
     if (gameType) {
-      const gt = gameType.toUpperCase();
-      let logicAddr = gameType.toLowerCase();
-      
-      // Resolve names to addresses from env
-      if (gt === 'RPS') {
-        logicAddr = (process.env.RPS_LOGIC_ADDRESS || '').toLowerCase();
-      } else if (gt === 'SIMPLE_DICE' || gt === 'DICE') {
-        logicAddr = (process.env.DICE_LOGIC_ADDRESS || '').toLowerCase();
-      }
-      
-      query = query.eq('game_logic', logicAddr);
+      query = query.eq('game_logic', gameType.toLowerCase());
     }
     
     if (stakeTier) query = query.eq('stake_wei', stakeTier);
@@ -355,14 +320,8 @@ export async function handleToolCall(name: string, args: any) {
     const { stakeETH, gameLogicAddress, playerAddress } = (args || {}) as { stakeETH: number; gameLogicAddress: string; playerAddress: string };
     const stakeWei = BigInt(Math.floor(stakeETH * 1e18));
 
-    // Determine if it's a FISE match (32-byte hash) or Standard match (20-byte address)
-    if (gameLogicAddress.length > 42) {
-      // FISE Match (bytes32 logicId)
-      return await prepTxWithBuffer('createFiseMatch', [stakeWei, gameLogicAddress as `0x${string}`], stakeWei, playerAddress as `0x${string}`);
-    } else {
-      // Standard Match (address gameLogic)
-      return await prepTxWithBuffer('createMatch', [stakeWei, gameLogicAddress as `0x${string}`], stakeWei, playerAddress as `0x${string}`);
-    }
+    // Exclusively FISE Match (bytes32 logicId)
+    return await prepTxWithBuffer('createFiseMatch', [stakeWei, gameLogicAddress as `0x${string}`], stakeWei, playerAddress as `0x${string}`);
   }
   if (name === 'prep_commit_tx') {
     const { matchId, playerAddress, move } = (args || {}) as { matchId: string; playerAddress: string; move: number };
@@ -472,26 +431,12 @@ export async function handleToolCall(name: string, args: any) {
 
   if (name === 'list_available_games') {
     const availableGames: any[] = [];
+    const ALPHA_WHITELIST = [
+      '0x4173a4e2e54727578fd50a3f1e721827c4c97c3a2824ca469c0ec730d4264b43', // Poker Blitz v4
+      '0xec63afc7c67678adbe7a60af04d49031878d1e78eff9758b1b79edeb7546dfdf', // Poker Blitz v5
+      '0x5f164061c4cbb981098161539f7f691650e0c245be54ade84ea5b57496955846'  // Poker Blitz v6
+    ];
 
-    // 1. Add Standard Solidity Games (Hardcoded)
-    if (process.env.RPS_LOGIC_ADDRESS) {
-      availableGames.push({
-        id: process.env.RPS_LOGIC_ADDRESS.toLowerCase(),
-        name: 'RockPaperScissors',
-        type: 'SOLIDITY',
-        description: 'Standard 3-way game theory benchmark.'
-      });
-    }
-    if (process.env.DICE_LOGIC_ADDRESS) {
-      availableGames.push({
-        id: process.env.DICE_LOGIC_ADDRESS.toLowerCase(),
-        name: 'SimpleDice',
-        type: 'SOLIDITY',
-        description: 'Probabilistic high-roller logic.'
-      });
-    }
-
-    // 2. Query LogicRegistry for FISE (JS) Games
     if (LOGIC_REGISTRY_ADDRESS && LOGIC_REGISTRY_ADDRESS !== '0x0000000000000000000000000000000000000000') {
       try {
         const count = await publicClient.readContract({
@@ -515,14 +460,31 @@ export async function handleToolCall(name: string, args: any) {
             args: [logicId]
           });
 
-          availableGames.push({
-            id: logicId,
-            cid: ipfsCID,
-            developer,
-            type: 'JAVASCRIPT',
-            isVerified,
-            description: 'Community-deployed logic via FISE.'
-          });
+          // Try to get CID from Supabase first (may be more up to date or canonical)
+          const { data: aliasData } = await supabase.from('logic_aliases').select('alias_name').eq('logic_id', logicId.toLowerCase()).single();
+          let finalCID = ipfsCID;
+          let gameName = aliasData?.alias_name || 'Community Game';
+
+          if (aliasData) {
+            // If we have an alias, try to get the metadata from logic_submissions
+            const { data: subData } = await supabase.from('logic_submissions').select('ipfs_cid').eq('game_name', "Poker Blitz (Stable)").single();
+            if (subData?.ipfs_cid) finalCID = subData.ipfs_cid;
+          }
+
+          // Only return verified games or games in our Alpha Whitelist
+          if (isVerified || ALPHA_WHITELIST.includes(logicId.toLowerCase())) {
+            if (ALPHA_WHITELIST.includes(logicId.toLowerCase())) gameName = 'POKER_BLITZ';
+
+            availableGames.push({
+              id: logicId,
+              name: gameName,
+              cid: finalCID,
+              developer,
+              type: 'JAVASCRIPT',
+              isVerified,
+              description: 'Active game logic via FISE.'
+            });
+          }
         }
       } catch (err) {
         logger.error({ err }, 'Error fetching from LogicRegistry');
