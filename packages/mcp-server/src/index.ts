@@ -159,6 +159,7 @@ async function enrichMatchesWithNicknames(matches: any[]) {
 
 const ESCROW_ABI = [
   { name: 'createMatch', type: 'function', stateMutability: 'payable', inputs: [{ name: '_stake', type: 'uint256' }, { name: '_gameLogic', type: 'address' }], outputs: [] },
+  { name: 'createFiseMatch', type: 'function', stateMutability: 'payable', inputs: [{ name: 'stake', type: 'uint256' }, { name: 'logicId', type: 'bytes32' }], outputs: [] },
   { name: 'joinMatch', type: 'function', stateMutability: 'payable', inputs: [{ name: '_matchId', type: 'uint256' }], outputs: [] },
   { name: 'commitMove', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: '_matchId', type: 'uint256' }, { name: '_commitHash', type: 'bytes32' }], outputs: [] },
   { name: 'revealMove', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: '_matchId', type: 'uint256' }, { name: '_move', type: 'uint8' }, { name: '_salt', type: 'bytes32' }], outputs: [] },
@@ -185,7 +186,7 @@ export const TOOLS = [
   { name: 'find_matches', description: 'Finds open matches.', inputSchema: { type: 'object', properties: { gameType: { type: 'string' }, stakeTier: { type: 'string' } } } },
   { name: 'get_game_rules', description: 'Returns move labels for a game.', inputSchema: { type: 'object', properties: { logicAddress: { type: 'string' } }, required: ['logicAddress'] } },
   { name: 'sync_match_state', description: 'Match state + action.', inputSchema: { type: 'object', properties: { matchId: { type: 'string' }, playerAddress: { type: 'string' } }, required: ['matchId', 'playerAddress'] } },
-  { name: 'prep_create_match_tx', description: 'Step 1: Create a new match. Minimum stake is $5.00 USD worth of ETH.', inputSchema: { type: 'object', properties: { stakeETH: { type: 'number', description: 'Amount in ETH, e.g. 0.01' }, gameLogicAddress: { type: 'string' }, playerAddress: { type: 'string' } }, required: ['stakeETH', 'gameLogicAddress', 'playerAddress'] } },
+  { name: 'prep_create_match_tx', description: 'Step 1: Create a new match.', inputSchema: { type: 'object', properties: { stakeETH: { type: 'number', description: 'Amount in ETH, e.g. 0.01' }, gameLogicAddress: { type: 'string' }, playerAddress: { type: 'string' } }, required: ['stakeETH', 'gameLogicAddress', 'playerAddress'] } },
   { name: 'prep_join_match_tx', description: 'Step 2: Join an existing OPEN match. Call this before commitMove if you are Player B.', inputSchema: { type: 'object', properties: { matchId: { type: 'string' }, playerAddress: { type: 'string' } }, required: ['matchId', 'playerAddress'] } },
   { name: 'prep_commit_tx', description: 'Step 3: Submit a hashed secret move to an ACTIVE match. Match status must be ACTIVE.', inputSchema: { type: 'object', properties: { matchId: { type: 'string' }, playerAddress: { type: 'string' }, move: { type: 'number' } }, required: ['matchId', 'playerAddress', 'move'] } },
   { name: 'prep_reveal_tx', description: 'Step 4: Reveal your move after both players have committed. Use the salt from your persistence layer.', inputSchema: { type: 'object', properties: { matchId: { type: 'string' }, move: { type: 'number' }, salt: { type: 'string' }, playerAddress: { type: 'string' } }, required: ['matchId', 'move', 'salt', 'playerAddress'] } },
@@ -327,16 +328,16 @@ export async function handleToolCall(name: string, args: any) {
   if (name === 'prep_create_match_tx') {
     const { stakeETH, gameLogicAddress, playerAddress } = (args || {}) as { stakeETH: number; gameLogicAddress: string; playerAddress: string };
     const stakeWei = BigInt(Math.floor(stakeETH * 1e18));
-    
-    // Verify $5 Minimum Floor
-    const minWei = await usdToWei(5);
-    if (stakeWei < minWei) {
-      throw new Error(`Stake too low. Minimum required: $5.00 USD (~${(Number(minWei) / 1e18).toFixed(6)} ETH)`);
+
+    // Determine if it's a FISE match (32-byte hash) or Standard match (20-byte address)
+    if (gameLogicAddress.length > 42) {
+      // FISE Match (bytes32 logicId)
+      return await prepTxWithBuffer('createFiseMatch', [stakeWei, gameLogicAddress as `0x${string}`], stakeWei, playerAddress as `0x${string}`);
+    } else {
+      // Standard Match (address gameLogic)
+      return await prepTxWithBuffer('createMatch', [stakeWei, gameLogicAddress as `0x${string}`], stakeWei, playerAddress as `0x${string}`);
     }
-
-    return await prepTxWithBuffer('createMatch', [stakeWei, gameLogicAddress as `0x${string}`], stakeWei, playerAddress as `0x${string}`);
   }
-
   if (name === 'prep_commit_tx') {
     const { matchId, playerAddress, move } = (args || {}) as { matchId: string; playerAddress: string; move: number };
     const { dbId, onChainId } = parseMatchId(matchId);
@@ -722,7 +723,7 @@ async function main() {
 
     // IMPORTANT: Handle raw body for this endpoint
     // The SDK needs to read the raw stream
-    app.post('/messages', async (req, res) => {
+    app.post('/messages', express.raw({ type: 'application/json', limit: '4mb' }), async (req, res) => {
       const sessionId = req.query.sessionId as string;
       
       if (!sessionId) {
@@ -742,7 +743,9 @@ async function main() {
         logger.info({ sessionId, contentType: req.headers['content-type'] }, 'Handling POST message');
         
         // The SDK reads the request stream directly
-        await transport.handlePostMessage(req, res);
+        // Parse the raw body buffer to JSON before passing to SDK
+        const parsedBody = req.body ? JSON.parse(req.body.toString()) : undefined;
+        await transport.handlePostMessage(req, res, parsedBody);
         
         logger.info({ sessionId, headersSent: res.headersSent }, 'POST message handled');
       } catch (err: any) {
