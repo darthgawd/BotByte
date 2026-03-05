@@ -10,8 +10,9 @@ const dmMono = DM_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FALKEN Arena Observer",
-  description: "Real-time leaderboard and match tracker for the FALKEN Protocol.",
+  other: {
+    'base:app_id': '69a9732a0050dd24efcc1e76',
+  },
 };
 
 export default function RootLayout({
