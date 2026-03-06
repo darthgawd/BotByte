@@ -28,6 +28,7 @@ abstract contract MatchEscrow is ReentrancyGuard, Ownable, Pausable {
         uint8     currentRound;
         uint8[]   wins;            // Score for each player index
         uint8     drawCounter;     // Consecutive draw counter for sudden death
+        uint8     winsRequired;    // Rounds needed to win (1 for single-round, 3 for best-of-5, etc.)
         Phase     phase;
         MatchStatus status;
         uint256   commitDeadline;
@@ -330,6 +331,16 @@ abstract contract MatchEscrow is ReentrancyGuard, Ownable, Pausable {
     function setTreasury(address newTreasury) external onlyOwner {
         require(newTreasury != address(0), "Invalid address");
         treasury = newTreasury;
+    }
+
+    /**
+     * @dev Allows owner to set wins required for a match (for single-round or custom formats).
+     */
+    function setWinsRequired(uint256 matchId, uint8 winsRequired) external onlyOwner {
+        Match storage m = matches[matchId];
+        require(m.status == MatchStatus.OPEN || m.status == MatchStatus.ACTIVE, "Match not active");
+        require(winsRequired > 0, "Wins required must be > 0");
+        m.winsRequired = winsRequired;
     }
 
     /**

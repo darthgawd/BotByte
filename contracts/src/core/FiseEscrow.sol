@@ -80,10 +80,11 @@ contract FiseEscrow is MatchEscrow {
         m.phase = Phase.COMMIT;
         m.status = MatchStatus.OPEN;
         
-        // Initialize wins array
+        // Initialize wins array and set winsRequired (default to best-of-5)
         for (uint256 i = 0; i < maxPlayers; i++) {
             m.wins.push(0);
         }
+        m.winsRequired = DEFAULT_WINS_REQUIRED;
 
         // Set initial total pot and contribution
         m.totalPot = stake;
@@ -132,7 +133,7 @@ contract FiseEscrow is MatchEscrow {
         // Check for match completion
         // For N-player, we settle if someone hits 3 wins or if max rounds reached
         bool matchFinished = false;
-        if (roundWinnerIndex != DRAW_INDEX && m.wins[roundWinnerIndex] >= DEFAULT_WINS_REQUIRED) {
+        if (roundWinnerIndex != DRAW_INDEX && m.wins[roundWinnerIndex] >= m.winsRequired) {
             matchFinished = true;
         } else if (m.currentRound >= MAX_ROUNDS) {
             matchFinished = true;
