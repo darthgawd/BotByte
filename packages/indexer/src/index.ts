@@ -22,7 +22,7 @@ const ESCROW_ADDRESS = (process.env.ESCROW_ADDRESS || '').toLowerCase();
 
 // V3 ABI (Multiplayer + Bytes32)
 const ESCROW_ABI = [
-  { name: 'MatchCreated', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'creator', type: 'address', indexed: true }, { name: 'stake', type: 'uint256', indexed: false }, { name: 'logicId', type: 'bytes32', indexed: true }, { name: 'maxPlayers', type: 'uint8', indexed: false }] },
+  { name: 'MatchCreated', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'creator', type: 'address', indexed: true }, { name: 'stake', type: 'uint256', indexed: false }, { name: 'logicId', type: 'bytes32', indexed: true }, { name: 'maxPlayers', type: 'uint8', indexed: false }, { name: 'winsRequired', type: 'uint8', indexed: false }] },
   { name: 'MatchJoined', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'player', type: 'address', indexed: true }, { name: 'index', type: 'uint8', indexed: false }] },
   { name: 'RoundStarted', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'round', type: 'uint8', indexed: false }] },
   { name: 'MoveCommitted', type: 'event', inputs: [{ name: 'matchId', type: 'uint256', indexed: true }, { name: 'round', type: 'uint8', indexed: false }, { name: 'player', type: 'address', indexed: true }] },
@@ -46,6 +46,7 @@ const ESCROW_ABI = [
     { name: 'revealDeadline', type: 'uint256' },
     { name: 'winner', type: 'address' }
   ] }] },
+  { name: 'roundCommits', type: 'function', stateMutability: 'view', inputs: [{ name: 'matchId', type: 'uint256' }, { name: 'round', type: 'uint8' }, { name: 'player', type: 'address' }], outputs: [{ name: 'commitHash', type: 'bytes32' }, { name: 'move', type: 'uint8' }, { name: 'salt', type: 'bytes32' }, { name: 'revealed', type: 'bool' }] },
 ];
 
 const processedLogIds = new Set<string>();
@@ -158,6 +159,7 @@ async function processLog(log: any) {
       stake_wei: args.stake.toString(), 
       game_logic: args.logicId.toLowerCase(), 
       max_players: args.maxPlayers,
+      wins_required: args.winsRequired || 3, // Default to 3 for backward compatibility
       status: 'OPEN', 
       phase: 'COMMIT', 
       current_round: 1,
@@ -225,12 +227,27 @@ async function processLog(log: any) {
     const { data: match } = await supabase.from('matches').select('players').eq('match_id', mId).single();
     const playerIndex = match?.players?.indexOf(args.player.toLowerCase()) ?? 0;
     
+    // Fetch salt from contract (not in event)
+    let salt = null;
+    try {
+      const commitData = await publicClient.readContract({
+        address: ESCROW_ADDRESS as `0x${string}`,
+        abi: ESCROW_ABI,
+        functionName: 'roundCommits',
+        args: [BigInt(args.matchId), args.round, args.player]
+      }) as any;
+      salt = commitData[2]; // salt is 3rd return value
+    } catch (err: any) {
+      logger.warn({ mId, player: args.player.toLowerCase(), err: err.message }, 'Failed to fetch salt from contract');
+    }
+    
     const { error: upsertError } = await supabase.from('rounds').upsert({
       match_id: mId,
       round_number: args.round,
       player_address: args.player.toLowerCase(),
       player_index: playerIndex,
       move: args.move,
+      salt: salt,
       revealed: true,
       reveal_tx_hash: log.transactionHash
     }, { onConflict: 'match_id,round_number,player_address' });
@@ -238,7 +255,7 @@ async function processLog(log: any) {
     if (upsertError) {
       logger.error({ mId, error: upsertError }, 'MoveRevealed upsert FAILED');
     } else {
-      logger.info({ mId, round: args.round, player: args.player.toLowerCase(), move: args.move }, 'MoveRevealed recorded');
+      logger.info({ mId, round: args.round, player: args.player.toLowerCase(), move: args.move, hasSalt: !!salt }, 'MoveRevealed recorded');
     }
   } else if (eventName === 'RoundResolved') {
     // winnerIndex 255 = Draw

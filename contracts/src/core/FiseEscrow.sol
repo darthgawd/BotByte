@@ -56,8 +56,10 @@ contract FiseEscrow is MatchEscrow {
      * @param stake Entry stake in USDC.
      * @param logicId The registered ID from LogicRegistry.
      * @param maxPlayers Number of players needed to start.
+     * @param winsRequired Rounds needed to win (1 for single-round, 3 for best-of-5, etc.)
      */
-    function createMatch(uint256 stake, bytes32 logicId, uint8 maxPlayers) external nonReentrant whenNotPaused {
+    function createMatch(uint256 stake, bytes32 logicId, uint8 maxPlayers, uint8 winsRequired) external nonReentrant whenNotPaused {
+        require(winsRequired > 0, "Wins required must be > 0");
         require(stake > 0, "Stake must be > 0");
         require(maxPlayers >= 2, "Minimum 2 players");
         
@@ -80,17 +82,17 @@ contract FiseEscrow is MatchEscrow {
         m.phase = Phase.COMMIT;
         m.status = MatchStatus.OPEN;
         
-        // Initialize wins array and set winsRequired (default to best-of-5)
+        // Initialize wins array and set winsRequired (creator chooses)
         for (uint256 i = 0; i < maxPlayers; i++) {
             m.wins.push(0);
         }
-        m.winsRequired = DEFAULT_WINS_REQUIRED;
+        m.winsRequired = winsRequired;
 
         // Set initial total pot and contribution
         m.totalPot = stake;
         playerContributions[matchId][msg.sender] = stake;
 
-        emit MatchCreated(matchId, msg.sender, stake, logicId, maxPlayers);
+        emit MatchCreated(matchId, msg.sender, stake, logicId, maxPlayers, winsRequired);
     }
 
     /**

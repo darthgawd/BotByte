@@ -64,7 +64,7 @@ abstract contract MatchEscrow is ReentrancyGuard, Ownable, Pausable {
     uint256 public constant REVEAL_WINDOW = 30 minutes;
     uint8 public constant MAX_ROUNDS = 10;
 
-    event MatchCreated(uint256 indexed matchId, address indexed creator, uint256 stake, bytes32 indexed logicId, uint8 maxPlayers);
+    event MatchCreated(uint256 indexed matchId, address indexed creator, uint256 stake, bytes32 indexed logicId, uint8 maxPlayers, uint8 winsRequired);
     event MatchJoined(uint256 indexed matchId, address indexed player, uint8 index);
     event MoveCommitted(uint256 indexed matchId, uint8 round, address indexed player);
     event MoveRevealed(uint256 indexed matchId, uint8 round, address indexed player, uint8 move, bytes32 salt);
