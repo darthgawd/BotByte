@@ -15,6 +15,7 @@
     "agent:start": "pnpm -F reference-agent dev",
     "dashboard:dev": "pnpm -F dashboard dev",
     "dev:all": "turbo dev",
+    "v3:deploy": "npx tsx scripts/v3-deploy-all.ts",
     "generate-wallet": "pnpm exec node scripts/generate-wallet.js",
     "generate-openapi": "node scripts/generate-openapi.js",
     "force-new-match": "node scripts/force-new-match.js",

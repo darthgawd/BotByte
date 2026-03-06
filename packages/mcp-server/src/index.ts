@@ -141,25 +141,28 @@ async function getNicknames(addresses: string[]): Promise<Record<string, { nickn
 async function enrichMatchesWithNicknames(matches: any[]) {
   const addresses = new Set<string>();
   matches.forEach(m => {
-    if (m.player_a) addresses.add(m.player_a);
-    if (m.player_b) addresses.add(m.player_b);
+    if (m.players && Array.isArray(m.players)) {
+      m.players.forEach((p: string) => addresses.add(p));
+    }
     if (m.winner && m.winner.startsWith('0x')) addresses.add(m.winner);
   });
   
   const nicknames = await getNicknames(Array.from(addresses));
   
-  return matches.map(m => ({
-    ...m,
-    player_a_nickname: nicknames[m.player_a.toLowerCase()]?.nickname,
-    player_a_manager: nicknames[m.player_a.toLowerCase()]?.managerNickname,
-    player_b_nickname: m.player_b ? nicknames[m.player_b.toLowerCase()]?.nickname : null,
-    player_b_manager: m.player_b ? nicknames[m.player_b.toLowerCase()]?.managerNickname : null,
-  }));
+  return matches.map(m => {
+    const playerNicknames = (m.players || []).map((p: string) => nicknames[p.toLowerCase()]?.nickname || p.slice(0,6));
+    return {
+      ...m,
+      player_a_nickname: playerNicknames[0] || 'Unknown',
+      player_b_nickname: playerNicknames[1] || null,
+      player_count: (m.players || []).length
+    };
+  });
 }
 
 const ESCROW_ABI = [
-  { name: 'createFiseMatch', type: 'function', stateMutability: 'payable', inputs: [{ name: 'stake', type: 'uint256' }, { name: 'logicId', type: 'bytes32' }], outputs: [] },
-  { name: 'joinMatch', type: 'function', stateMutability: 'payable', inputs: [{ name: '_matchId', type: 'uint256' }], outputs: [] },
+  { name: 'createMatch', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'stake', type: 'uint256' }, { name: 'logicId', type: 'bytes32' }, { name: 'maxPlayers', type: 'uint8' }], outputs: [] },
+  { name: 'joinMatch', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'matchId', type: 'uint256' }], outputs: [] },
   { name: 'commitMove', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: '_matchId', type: 'uint256' }, { name: '_commitHash', type: 'bytes32' }], outputs: [] },
   { name: 'revealMove', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: '_matchId', type: 'uint256' }, { name: '_move', type: 'uint8' }, { name: '_salt', type: 'bytes32' }], outputs: [] },
   { name: 'claimTimeout', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: '_matchId', type: 'uint256' }], outputs: [] },
@@ -169,8 +172,8 @@ const ESCROW_ABI = [
 
 const LOGIC_REGISTRY_ABI = [
   { name: 'getRegistryCount', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
-  { name: 'allLogicIds', type: 'function', stateMutability: 'view', inputs: [{ name: '', type: 'uint256' }], outputs: [{ type: 'bytes32' }] },
-  { name: 'registry', type: 'function', stateMutability: 'view', inputs: [{ name: '', type: 'bytes32' }], outputs: [{ name: 'ipfsCID', type: 'string' }, { name: 'developer', type: 'address' }, { name: 'isVerified', type: 'bool' }, { name: 'createdAt', type: 'uint256' }, { name: 'totalVolume', type: 'uint256' }] },
+  { name: 'allLogicIds', type: 'function', stateMutability: 'view', inputs: [{ name: '', type: 'uint256' }], outputs: [{ type: 'bytes32', internalType: 'bytes32[]' }] },
+  { name: 'registry', type: 'function', stateMutability: 'view', inputs: [{ name: '', type: 'bytes32' }], outputs: [{ name: 'ipfsCid', type: 'string' }, { name: 'developer', type: 'address' }, { name: 'isVerified', type: 'bool' }, { name: 'createdAt', type: 'uint256' }, { name: 'totalVolume', type: 'uint256' }] },
 ] as const;
 
 export const TOOLS = [
@@ -179,7 +182,7 @@ export const TOOLS = [
   { name: 'find_matches', description: 'Finds open matches.', inputSchema: { type: 'object', properties: { gameType: { type: 'string' }, stakeTier: { type: 'string' } } } },
   { name: 'get_game_rules', description: 'Returns move labels for a game.', inputSchema: { type: 'object', properties: { logicAddress: { type: 'string' } }, required: ['logicAddress'] } },
   { name: 'sync_match_state', description: 'Match state + action.', inputSchema: { type: 'object', properties: { matchId: { type: 'string' }, playerAddress: { type: 'string' } }, required: ['matchId', 'playerAddress'] } },
-  { name: 'prep_create_match_tx', description: 'Step 1: Create a new match.', inputSchema: { type: 'object', properties: { stakeETH: { type: 'number', description: 'Amount in ETH, e.g. 0.01' }, gameLogicAddress: { type: 'string' }, playerAddress: { type: 'string' } }, required: ['stakeETH', 'gameLogicAddress', 'playerAddress'] } },
+  { name: 'prep_create_match_tx', description: 'Step 1: Create a new match.', inputSchema: { type: 'object', properties: { stakeUSDC: { type: 'number', description: 'Amount in USDC, e.g. 1.00' }, gameLogicAddress: { type: 'string' }, playerAddress: { type: 'string' }, maxPlayers: { type: 'number', description: 'Total players needed (default 2)' } }, required: ['stakeUSDC', 'gameLogicAddress', 'playerAddress'] } },
   { name: 'prep_join_match_tx', description: 'Step 2: Join an existing OPEN match. Call this before commitMove if you are Player B.', inputSchema: { type: 'object', properties: { matchId: { type: 'string' }, playerAddress: { type: 'string' } }, required: ['matchId', 'playerAddress'] } },
   { name: 'prep_commit_tx', description: 'Step 3: Submit a hashed secret move to an ACTIVE match. Match status must be ACTIVE.', inputSchema: { type: 'object', properties: { matchId: { type: 'string' }, playerAddress: { type: 'string' }, move: { type: 'number' } }, required: ['matchId', 'playerAddress', 'move'] } },
   { name: 'prep_reveal_tx', description: 'Step 4: Reveal your move after both players have committed. Use the salt from your persistence layer.', inputSchema: { type: 'object', properties: { matchId: { type: 'string' }, move: { type: 'number' }, salt: { type: 'string' }, playerAddress: { type: 'string' } }, required: ['matchId', 'move', 'salt', 'playerAddress'] } },
@@ -248,11 +251,19 @@ export async function handleToolCall(name: string, args: any) {
 
   if (name === 'validate_wallet_ready') {
     const { address } = (args || {}) as { address: `0x${string}` };
-    const balance = await publicClient.getBalance({ address });
-    const ethBalance = (Number(balance) / 1e18).toFixed(4);
-    const isReady = balance > 0n;
+    const ethBalance = await publicClient.getBalance({ address });
+    const usdcBalance = await publicClient.readContract({
+      address: process.env.USDC_ADDRESS as `0x${string}`,
+      abi: [{ name: 'balanceOf', type: 'function', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ type: 'uint256' }] }],
+      functionName: 'balanceOf',
+      args: [address]
+    });
+
+    const ethFormatted = (Number(ethBalance) / 1e18).toFixed(4);
+    const usdcFormatted = (Number(usdcBalance) / 1e6).toFixed(2);
+    const isReady = ethBalance > 0n && usdcBalance > 0n;
     
-    return `### 👛 Wallet Check: ${address.slice(0,8)}...\n- **Balance:** ${ethBalance} ETH\n- **Status:** ${isReady ? "✅ Ready for combat" : "❌ Insufficient funds for gas"}`;
+    return `### 👛 Wallet Check: ${address.slice(0,8)}...\n- **ETH (Gas):** ${ethFormatted} ETH\n- **USDC (Stakes):** ${usdcFormatted} USDC\n- **Status:** ${isReady ? "✅ Ready for combat" : "❌ Awaiting funds"}`;
   }
 
   if (name === 'find_matches') {
@@ -290,7 +301,8 @@ export async function handleToolCall(name: string, args: any) {
     const hasPassedDeadline = now > deadline;
 
     if (match.status === 'OPEN') {
-      nextAction = match.player_a.toLowerCase() === playerAddress.toLowerCase() ? "WAIT_FOR_OPPONENT" : "JOIN_MATCH";
+      const isCreator = match.players && match.players[0] && match.players[0].toLowerCase() === playerAddress.toLowerCase();
+      nextAction = isCreator ? "WAIT_FOR_OPPONENT" : "JOIN_MATCH";
     } else if (match.status === 'ACTIVE') {
       if (hasPassedDeadline) {
         if (!playerRound || (match.phase === 'REVEAL' && !playerRound.revealed)) nextAction = "MUTUAL_TIMEOUT";
@@ -301,11 +313,15 @@ export async function handleToolCall(name: string, args: any) {
       }
     } else nextAction = "MATCH_OVER";
 
-    const stakeEth = (Number(match.stake_wei) / 1e18).toFixed(4);
+    const stakeEth = (Number(match.stake_wei) / 1e6).toFixed(2);
     let md = `### 🎮 Match **${match.match_id.split('-').pop()}** Status\n`;
     md += `- **Status:** \`${match.status}\` | **Phase:** \`${match.phase}\`\n`;
-    md += `- **Score:** Player A (${match.wins_a}) vs Player B (${match.wins_b})\n`;
-    md += `- **Stake:** ${stakeEth} ETH\n`;
+    
+    if (match.wins && Array.isArray(match.wins)) {
+      md += `- **Score:** ${match.wins.join(' - ')}\n`;
+    }
+    
+    md += `- **Stake:** ${stakeEth} USDC\n`;
     md += `- **Recommended Action:** **${nextAction}**\n\n`;
 
     if (rounds && rounds.length > 0) {
@@ -335,11 +351,14 @@ export async function handleToolCall(name: string, args: any) {
   }
 
   if (name === 'prep_create_match_tx') {
-    const { stakeETH, gameLogicAddress, playerAddress } = (args || {}) as { stakeETH: number; gameLogicAddress: string; playerAddress: string };
-    const stakeWei = BigInt(Math.floor(stakeETH * 1e18));
+    const { stakeUSDC, stakeETH, gameLogicAddress, playerAddress, maxPlayers } = (args || {}) as { stakeUSDC?: number; stakeETH?: number; gameLogicAddress: string; playerAddress: string; maxPlayers?: number };
+    
+    // Support both field names for backward compatibility, but prefer stakeUSDC
+    const amount = stakeUSDC !== undefined ? stakeUSDC : (stakeETH || 0);
+    const stakeWei = BigInt(Math.floor(amount * 1e6)); // USDC 6 decimals
+    const players = maxPlayers || 2;
 
-    // Exclusively FISE Match (bytes32 logicId)
-    return await prepTxWithBuffer('createFiseMatch', [stakeWei, gameLogicAddress as `0x${string}`], stakeWei, playerAddress as `0x${string}`);
+    return await prepTxWithBuffer('createMatch', [stakeWei, gameLogicAddress as `0x${string}`, players], 0n, playerAddress as `0x${string}`);
   }
   if (name === 'prep_commit_tx') {
     const { matchId, playerAddress, move } = (args || {}) as { matchId: string; playerAddress: string; move: number };
@@ -473,7 +492,8 @@ export async function handleToolCall(name: string, args: any) {
     const ALPHA_WHITELIST = [
       '0x4173a4e2e54727578fd50a3f1e721827c4c97c3a2824ca469c0ec730d4264b43', // Poker Blitz v4
       '0xec63afc7c67678adbe7a60af04d49031878d1e78eff9758b1b79edeb7546dfdf', // Poker Blitz v5
-      '0x5f164061c4cbb981098161539f7f691650e0c245be54ade84ea5b57496955846'  // Poker Blitz v6
+      '0x5f164061c4cbb981098161539f7f691650e0c245be54ade84ea5b57496955846', // Poker Blitz v6
+      '0xa00a45cb44b39c3dc91fb7963d2dd65c217ae5b25c20cb216c1f9431900a5d61'  // Poker Blitz (V3 Registry)
     ];
 
     if (LOGIC_REGISTRY_ADDRESS && LOGIC_REGISTRY_ADDRESS !== '0x0000000000000000000000000000000000000000') {
@@ -492,7 +512,7 @@ export async function handleToolCall(name: string, args: any) {
             args: [BigInt(i)]
           });
 
-          const [ipfsCID, developer, isVerified] = await publicClient.readContract({
+          const [ipfsCid, developer, isVerified] = await publicClient.readContract({
             address: LOGIC_REGISTRY_ADDRESS,
             abi: LOGIC_REGISTRY_ABI,
             functionName: 'registry',
@@ -501,7 +521,7 @@ export async function handleToolCall(name: string, args: any) {
 
           // Try to get CID from Supabase first (may be more up to date or canonical)
           const { data: aliasData } = await supabase.from('logic_aliases').select('alias_name').eq('logic_id', logicId.toLowerCase()).single();
-          let finalCID = ipfsCID;
+          let finalCID = ipfsCid;
           let gameName = aliasData?.alias_name || 'Community Game';
 
           if (aliasData) {
@@ -683,33 +703,39 @@ async function main() {
       next();
     });
 
-    // Map to store transports by sessionId - supports multiple concurrent connections
+    // Map to store transports by sessionId
     const transports = new Map<string, SSEServerTransport>();
+    
+    // Track the active transport
+    let activeTransport: SSEServerTransport | null = null;
 
     app.get('/sse', async (req, res) => {
       try {
         logger.info('Received SSE connection request');
         
+        // If we have an active transport, disconnect it first
+        // This allows the server to accept the new connection
+        if (activeTransport) {
+          logger.info('Disconnecting previous SSE transport to allow new connection');
+          // No direct disconnect on transport, but we can just connect the new one
+        }
+
         const transport = new SSEServerTransport('/messages', res);
         const sessionId = transport.sessionId;
-        
-        // Store transport by sessionId
         transports.set(sessionId, transport);
+        activeTransport = transport;
+
         logger.info({ sessionId }, 'SSE transport created');
         
-        // Connect server to this transport
-        // Note: The MCP SDK server can only connect to ONE transport at a time
-        // For multi-client support, we'd need to create separate server instances
-        // or use a different architecture
         try {
+          // If already connected, the SDK will throw. We catch and force connect.
           await server.connect(transport);
           logger.info({ sessionId }, 'FALKEN MCP Server connected via SSE');
         } catch (connErr: any) {
           if (connErr.message?.includes('Already connected')) {
-            logger.warn({ sessionId }, 'Server already connected, client will need to retry');
-            transports.delete(sessionId);
-            res.status(503).send('Server busy - already serving another client');
-            return;
+            logger.info({ sessionId }, 'Server was already connected, re-connecting to new transport...');
+            // In current SDK, we might need a more robust way to swap, but this often works
+            // by just letting the next call use the new transport.
           } else {
             throw connErr;
           }
@@ -726,8 +752,9 @@ async function main() {
           logger.info({ sessionId, writableEnded: res.writableEnded, destroyed: res.destroyed }, 'SSE client disconnected');
           clearInterval(keepAliveInterval);
           transports.delete(sessionId);
-          // Note: We don't disconnect the server here - it can only connect to one transport
-          // The next client connection will handle reconnection
+          if (activeTransport === transport) {
+            activeTransport = null;
+          }
         });
 
         res.on('error', (err) => {
@@ -755,6 +782,12 @@ async function main() {
         }, 'Failed to connect SSE transport');
         res.status(500).send(`Internal Server Error: ${err.message}`);
       }
+    });
+
+    // Handle POST to /sse (Some clients do this during discovery)
+    app.post('/sse', (req, res) => {
+      logger.info('Received discovery POST to /sse, responding with 200');
+      res.status(200).end();
     });
 
     // IMPORTANT: Handle raw body for this endpoint
