@@ -171,7 +171,6 @@ export const PokerTable = ({
         {/* Player B Area (Top) */}
         <div className="absolute top-[6%] left-1/2 -translate-x-1/2 flex flex-col items-center w-full px-4">
           <div className="mb-2 sm:mb-4 flex flex-col items-center">
-            <span className="text-[10px] sm:text-xs font-black text-white/40 uppercase tracking-[0.2em] mb-1">RIVAL</span>
             <div className={`backdrop-blur-md border px-3 sm:px-4 py-1 rounded-full text-white font-bold text-xs sm:text-sm ${playerB === 'WAITING' || playerBNickname === 'WAITING...' ? 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400' : 'bg-black/40 border-white/10'}`}>
               {playerBNickname || playerB?.slice(0, 6) || 'Unknown'}
             </div>
@@ -249,7 +248,6 @@ export const PokerTable = ({
             <div className="bg-black/40 backdrop-blur-md border border-white/10 px-3 sm:px-4 py-1 rounded-full text-white font-bold text-xs sm:text-sm">
               {playerANickname || playerA?.slice(0, 6) || 'Unknown'}
             </div>
-            <span className="mt-1 text-[10px] sm:text-xs font-black text-white/40 uppercase tracking-[0.2em]">INITIATOR (YOU)</span>
           </div>
         </div>
       </div>

@@ -106,11 +106,15 @@ export class Referee {
     if (result === 255 || result === 'draw' || result === 'DRAW') return 255;
 
     if (typeof result === 'number') {
-      // If it's 1 or 2, we must ensure we map it to 0-indexed indices (0 or 1)
-      // for backward compatibility with 2-player games that return 1/2.
-      // New N-player games should return the 0-indexed index directly.
-      if (result === 1 || result === 2) return result - 1;
-      return result;
+      // Support legacy 1-indexed results (1 or 2) from older game logic
+      // BUT only if the result is >= number of players (meaning it's 1-indexed)
+      // For 2 players: result 1 or 2 means 1-indexed, convert to 0 or 1
+      // For N players: result should already be 0-indexed (0 to N-1)
+      const playerCount = context.players?.length || 2;
+      if (result >= 1 && result <= playerCount && result > playerCount - 1) {
+        return result - 1; // Convert 1-indexed to 0-indexed
+      }
+      return result; // Already 0-indexed (0, 1, 2, etc.)
     }
 
     if (typeof result === 'string') {

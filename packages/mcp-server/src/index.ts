@@ -266,9 +266,8 @@ export async function handleToolCall(name: string, args: any) {
         gameType: 'POKER_BLITZ',
         rules: '5-Card Draw. 1 Swap phase.',
         moveLabels: {
-          '99': 'STAY (Keep Hand)',
-          '0-4': 'Indices to discard (e.g. "012" discards first 3 cards)',
-          '01234': 'DISCARD ALL'
+          '99': 'STAY (Keep Hand) - Use this to keep all cards',
+          '0-4': 'Indices to discard as string. CRITICAL: Must be in DESCENDING ORDER (high to low). Examples: "20"=discard indices 2,0 | "40"=discard 4,0 | "43210"=discard all | "0"=discard only index 0. NEVER use ascending order like "02" - it will be interpreted incorrectly!'
         }
       };
     }
@@ -354,7 +353,16 @@ export async function handleToolCall(name: string, args: any) {
     const isPoker = match.game_logic.toLowerCase() === "0x889b3832e2a3049a777761ca2e26dd0daff8d94901a5b715355552cbb1e75d6e";
     if (isPoker && match.status === 'ACTIVE' && match.players) {
       const hand = calculatePokerHand(dbId, match.current_round, playerAddress, match.players);
-      if (hand) md += `- **Your Hand:** \`${hand}\`\n`;
+      if (hand) {
+        md += `- **Your Hand:** \`${hand}\`\n`;
+        // Add critical warning when action is to commit a move
+        if (nextAction === 'COMMIT_MOVE' || nextAction === 'REVEAL_MOVE') {
+          md += `\n⚠️ **CRITICAL MOVE FORMAT:** When discarding cards, indices MUST be in DESCENDING order (high→low)!\n`;
+          md += `- Example: To discard indices 0 and 2, send "20" NOT "02"\n`;
+          md += `- Why? "02" becomes number 2 (discards only index 2). "20" becomes 20 (discards 2 and 0).\n`;
+          md += `- "99" = Keep all cards (STAY)\n\n`;
+        }
+      }
     }
 
     md += `- **Stake:** ${stakeEth} USDC\n`;

@@ -268,9 +268,17 @@ async function processLog(log: any) {
       }
     }
   } else if (eventName === 'RoundResolved') {
-    // winnerIndex 255 = Draw
+    // WINNER MAPPING (V3 HARDENED):
+    // 0 (Player A) -> 1
+    // 1 (Player B) -> 2
+    // 255 (Draw)   -> 0
+    let dbWinner = 0;
+    if (args.winnerIndex === 0) dbWinner = 1;
+    else if (args.winnerIndex === 1) dbWinner = 2;
+    else dbWinner = 0; // Draw or fallback
+
     await supabase.from('rounds').update({ 
-        winner: args.winnerIndex === 255 ? 0 : args.winnerIndex + 1 
+        winner: dbWinner 
     }).match({ match_id: mId, round_number: args.round });
     
     // Refresh match scores and full state

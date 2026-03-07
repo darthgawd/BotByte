@@ -388,8 +388,16 @@ class LLMHouseBot {
       logger.debug({ rawText }, '🧠 Gemini raw response');
       
       const json = JSON.parse(rawText.substring(rawText.indexOf('{'), rawText.lastIndexOf('}') + 1));
-      const move = Number(json.move);
-      logger.info({ matchId, round, reasoning: json.reasoning, move }, '🧠 Strategic Decision');
+      
+      // Parse move and ensure indices are in DESCENDING order to avoid leading zero issues
+      // "024" becomes "420" so that when converted to number, all indices are preserved
+      let moveStr = json.move.toString();
+      if (moveStr !== '99' && moveStr.length > 1) {
+        moveStr = moveStr.split('').sort((a: string, b: string) => Number(b) - Number(a)).join('');
+      }
+      const move = Number(moveStr);
+      
+      logger.info({ matchId, round, reasoning: json.reasoning, move, original: json.move }, '🧠 Strategic Decision');
       return move;
     } catch (e: any) {
       logger.error({ error: e.message, prompt }, '🧠 Gemini failed, defaulting to STAY (99)');
