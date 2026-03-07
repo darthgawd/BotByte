@@ -34,6 +34,7 @@ const FISE_ESCROW_ABI = [
       { name: 'currentRound', type: 'uint8' },
       { name: 'wins', type: 'uint8[]' },
       { name: 'drawCounter', type: 'uint8' },
+      { name: 'winsRequired', type: 'uint8' },
       { name: 'phase', type: 'uint8' },
       { name: 'status', type: 'uint8' },
       { name: 'commitDeadline', type: 'uint256' },
@@ -46,7 +47,7 @@ const FISE_ESCROW_ABI = [
     type: 'function',
     stateMutability: 'view',
     inputs: [{ name: 'matchId', type: 'uint256' }, { name: 'round', type: 'uint8' }, { name: 'player', type: 'address' }],
-    outputs: [{ name: 'commitHash', type: 'bytes32' }, { name: 'revealed', type: 'bool' }]
+    outputs: [{ name: 'commitHash', type: 'bytes32' }, { name: 'salt', type: 'bytes32' }, { name: 'revealed', type: 'bool' }]
   }
 ] as const;
 
@@ -122,22 +123,33 @@ export class Watcher {
             args: [BigInt(i)] 
           });
           
+          logger.info({ matchId: i, matchDataType: typeof matchData, isArray: Array.isArray(matchData) }, 'Scanned match data');
+          
           const { status, phase, players } = matchData;
+          
+          logger.info({ matchId: i, status: Number(status), phase: Number(phase), playerCount: players?.length }, 'Match status check');
           
           // Check if match is ACTIVE (1) and in REVEAL phase (1)
           if (Number(status) === 1 && Number(phase) === 1) {
             // Check if all players revealed
             let allRevealed = true;
+            logger.info({ matchId: i, round: matchData.currentRound, players }, 'Checking reveals...');
             for (const player of players) {
-              const [, revealed] = await this.client.readContract({ 
-                address: escrowAddress, 
-                abi: FISE_ESCROW_ABI, 
-                functionName: 'getRoundStatus', 
-                args: [BigInt(i), matchData.currentRound, player] 
-              });
-              if (!revealed) {
+              try {
+                const roundStatus = await this.client.readContract({ 
+                  address: escrowAddress, 
+                  abi: FISE_ESCROW_ABI, 
+                  functionName: 'getRoundStatus', 
+                  args: [BigInt(i), matchData.currentRound, player] 
+                });
+                logger.info({ matchId: i, player, revealed: roundStatus[2] }, 'Got round status');
+                const revealed = roundStatus[2];
+                if (!revealed) {
+                  allRevealed = false;
+                }
+              } catch (err: any) {
+                logger.error({ matchId: i, player, err: err.message }, 'Failed to get round status');
                 allRevealed = false;
-                break;
               }
             }
             

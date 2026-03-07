@@ -1,0 +1,93 @@
+
+> indexer@1.0.0 start /home/darthgawd/Desktop/FALKEN/packages/indexer
+> node dist/run.js
+
+[dotenv@17.3.1] injecting env (0) from ../../.env -- tip: ⚙️  enable debug logging with { debug: true }
+[09:22:13.437] [32mINFO[39m (10898): [36mV3 Indexer starting...[39m
+    [35mfromBlock[39m: 38495177
+    [35mcurrentBlock[39m: 38519322
+    [35mescrow[39m: "0xe0ebae619bd93d925f718758eee05ea96d51d8d8"
+[09:22:13.438] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38495178
+    [35mtoChunk[39m: 38497177
+[09:22:13.439] [32mINFO[39m (10898): [36mV3 Indexer starting...[39m
+    [35mfromBlock[39m: 38495177
+    [35mcurrentBlock[39m: 38519322
+    [35mescrow[39m: "0xe0ebae619bd93d925f718758eee05ea96d51d8d8"
+[09:22:13.440] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38495178
+    [35mtoChunk[39m: 38497177
+[09:22:13.551] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38497178
+    [35mtoChunk[39m: 38499177
+[09:22:13.637] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38499178
+    [35mtoChunk[39m: 38501177
+[09:22:13.705] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38497178
+    [35mtoChunk[39m: 38499177
+[09:22:13.728] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38501178
+    [35mtoChunk[39m: 38503177
+[09:22:13.787] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38499178
+    [35mtoChunk[39m: 38501177
+[09:22:13.825] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38503178
+    [35mtoChunk[39m: 38505177
+[09:22:13.882] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38501178
+    [35mtoChunk[39m: 38503177
+[09:22:13.918] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38505178
+    [35mtoChunk[39m: 38507177
+[09:22:13.972] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38503178
+    [35mtoChunk[39m: 38505177
+[09:22:14.010] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38507178
+    [35mtoChunk[39m: 38509177
+[09:22:14.072] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38505178
+    [35mtoChunk[39m: 38507177
+[09:22:14.102] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38509178
+    [35mtoChunk[39m: 38511177
+[09:22:14.176] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38507178
+    [35mtoChunk[39m: 38509177
+[09:22:14.195] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38511178
+    [35mtoChunk[39m: 38513177
+[09:22:14.259] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38509178
+    [35mtoChunk[39m: 38511177
+[09:22:14.298] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38513178
+    [35mtoChunk[39m: 38515177
+[09:22:14.350] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38511178
+    [35mtoChunk[39m: 38513177
+[09:22:14.384] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38515178
+    [35mtoChunk[39m: 38517177
+[09:22:14.455] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38513178
+    [35mtoChunk[39m: 38515177
+[09:22:14.465] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38517178
+    [35mtoChunk[39m: 38519177
+[09:22:14.557] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38515178
+    [35mtoChunk[39m: 38517177
+[09:22:14.560] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38519178
+    [35mtoChunk[39m: 38519322
+[09:22:14.738] [32mINFO[39m (10898): [36mSwitching to watch mode...[39m
+[09:22:14.743] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38517178
+    [35mtoChunk[39m: 38519177
+[09:22:14.833] [32mINFO[39m (10898): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38519178
+    [35mtoChunk[39m: 38519322
+[09:22:14.927] [32mINFO[39m (10898): [36mSwitching to watch mode...[39m

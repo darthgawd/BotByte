@@ -1,0 +1,24 @@
+
+> indexer@1.0.0 start /home/darthgawd/Desktop/FALKEN/packages/indexer
+> node dist/run.js
+
+[dotenv@17.3.1] injecting env (31) from ../../.env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
+[15:31:55.483] [32mINFO[39m (60654): [36mV3 Indexer starting...[39m
+    [35mfromBlock[39m: 38530256
+    [35mcurrentBlock[39m: 38530413
+    [35mescrow[39m: "0x470432e701cd0b9731878aadb041ab81657e38dc"
+[15:31:55.485] [32mINFO[39m (60654): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38530257
+    [35mtoChunk[39m: 38530413
+[15:31:55.486] [32mINFO[39m (60654): [36mV3 Indexer starting...[39m
+    [35mfromBlock[39m: 38530256
+    [35mcurrentBlock[39m: 38530413
+    [35mescrow[39m: "0x470432e701cd0b9731878aadb041ab81657e38dc"
+[15:31:55.486] [32mINFO[39m (60654): [36mFetching historical logs...[39m
+    [35mcursor[39m: 38530257
+    [35mtoChunk[39m: 38530413
+[15:31:55.586] [32mINFO[39m (60654): [36mSwitching to watch mode...[39m
+[15:31:55.774] [32mINFO[39m (60654): [36mSwitching to watch mode...[39m
+/home/darthgawd/Desktop/FALKEN/packages/indexer:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  indexer@1.0.0 start: `node dist/run.js`
+Command failed with signal "SIGTERM"

@@ -1,0 +1,23 @@
+
+> agp@1.0.0 mcp:start /home/darthgawd/Desktop/FALKEN
+> pnpm -F mcp-server start
+
+
+> mcp-server@1.0.0 start /home/darthgawd/Desktop/FALKEN/packages/mcp-server
+> node dist/index.js
+
+{"level":30,"time":1772749162290,"pid":63393,"hostname":"ABRAHAM","escrow":"0xe0ebae619bd93d925f718758eee05ea96d51d8d8","hasSupabase":true,"msg":"MCP Server environment check"}
+{"level":30,"time":1772749162311,"pid":63393,"hostname":"ABRAHAM","msg":"FALKEN MCP Server listening on port 3001 (SSE)"}
+{"level":30,"time":1772749162311,"pid":63393,"hostname":"ABRAHAM","msg":"Health check: http://localhost:3001/health"}
+{"level":30,"time":1772749164524,"pid":63393,"hostname":"ABRAHAM","method":"GET","path":"/sse","query":{},"msg":"Inbound request"}
+{"level":30,"time":1772749164526,"pid":63393,"hostname":"ABRAHAM","msg":"Received SSE connection request"}
+{"level":30,"time":1772749164527,"pid":63393,"hostname":"ABRAHAM","sessionId":"d1792f45-d99d-4960-b7d3-5f146dba2c2b","msg":"SSE transport created"}
+{"level":30,"time":1772749164533,"pid":63393,"hostname":"ABRAHAM","sessionId":"d1792f45-d99d-4960-b7d3-5f146dba2c2b","msg":"FALKEN MCP Server connected via SSE"}
+{"level":30,"time":1772749174637,"pid":63393,"hostname":"ABRAHAM","method":"GET","path":"/sse","query":{},"msg":"Inbound request"}
+{"level":30,"time":1772749174637,"pid":63393,"hostname":"ABRAHAM","msg":"Received SSE connection request"}
+{"level":30,"time":1772749174637,"pid":63393,"hostname":"ABRAHAM","sessionId":"70c2e891-6a41-4c26-b8ad-d41d3a614f99","msg":"SSE transport created"}
+{"level":40,"time":1772749174638,"pid":63393,"hostname":"ABRAHAM","sessionId":"70c2e891-6a41-4c26-b8ad-d41d3a614f99","msg":"Server already connected, client will need to retry"}
+{"level":30,"time":1772749387507,"pid":63393,"hostname":"ABRAHAM","method":"GET","path":"/sse","query":{},"msg":"Inbound request"}
+{"level":30,"time":1772749387507,"pid":63393,"hostname":"ABRAHAM","msg":"Received SSE connection request"}
+{"level":30,"time":1772749387507,"pid":63393,"hostname":"ABRAHAM","sessionId":"f301a8eb-c256-488a-9b1c-75479e000639","msg":"SSE transport created"}
+{"level":40,"time":1772749387508,"pid":63393,"hostname":"ABRAHAM","sessionId":"f301a8eb-c256-488a-9b1c-75479e000639","msg":"Server already connected, client will need to retry"}

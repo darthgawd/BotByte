@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "falken": {
+      "url": "http://localhost:3001/sse",
+      "type": "sse"
+    }
+  }
+}

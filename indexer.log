@@ -1,0 +1,18 @@
+
+> agp@1.0.0 indexer:start /home/darthgawd/Desktop/FALKEN
+> pnpm -F indexer start
+
+
+> indexer@1.0.0 start /home/darthgawd/Desktop/FALKEN/packages/indexer
+> node dist/run.js
+
+[dotenv@17.3.1] injecting env (30) from ../../.env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
+[18:53:20.947] [32mINFO[39m (72259): [36mV3 Indexer starting...[39m
+    [35mfromBlock[39m: 38449142
+    [35mcurrentBlock[39m: 38493256
+    [35mescrow[39m: "0xe0ebae619bd93d925f718758eee05ea96d51d8d8"
+[18:53:20.955] [32mINFO[39m (72259): [36mV3 Indexer starting...[39m
+    [35mfromBlock[39m: 38449142
+    [35mcurrentBlock[39m: 38493256
+    [35mescrow[39m: "0xe0ebae619bd93d925f718758eee05ea96d51d8d8"
+ ELIFECYCLE  Command failed.

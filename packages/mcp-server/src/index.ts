@@ -711,7 +711,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 function calculatePokerHand(matchId: string, round: number, playerAddress: string, players: string[]) {
-  const seedStr = `${matchId}_${round}`;
+  const numericalId = matchId.split('-').pop() || matchId;
+  const seedStr = `${numericalId}_${round}`;
   let hash = 0;
   for (let i = 0; i < seedStr.length; i++) {
     hash = ((hash << 5) - hash) + seedStr.charCodeAt(i);
