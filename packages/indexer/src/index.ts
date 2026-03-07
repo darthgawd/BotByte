@@ -1,4 +1,4 @@
-import { createPublicClient, http, parseEventLogs, decodeFunctionData, keccak256, encodePacked } from 'viem';
+import { createPublicClient, http, parseEventLogs, decodeFunctionData } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
@@ -170,7 +170,7 @@ async function processLog(log: any) {
     else logger.info({ mId }, 'Successfully inserted MatchCreated');
   } else if (eventName === 'MatchJoined') {
     try {
-      const { data: match, error: fetchError } = await supabase.from('matches').select('players, max_players, game_logic').eq('match_id', mId).maybeSingle();
+      const { data: match, error: fetchError } = await supabase.from('matches').select('players, max_players').eq('match_id', mId).maybeSingle();
       if (fetchError) throw fetchError;
       
       if (match) {
@@ -182,48 +182,10 @@ async function processLog(log: any) {
           }
           const updatedPlayers = [...(match.players || []), playerLower];
           const isFull = updatedPlayers.length >= match.max_players;
-          
-          // Build update data
-          const updateData: any = {
+          const { error } = await supabase.from('matches').update({ 
               players: updatedPlayers,
               status: isFull ? 'ACTIVE' : 'OPEN'
-          };
-          
-          // POKER AUTO-DEAL: Generate initial state when match is full
-          if (isFull) {
-              const POKER_LOGIC_IDS = [
-                  '0xa00a45cb44b39c3dc91fb7963d2dd65c217ae5b25c20cb216c1f9431900a5d61',
-                  '0x4173a4e2e54727578fd50a3f1e721827c4c97c3a2824ca469c0ec730d4264b43',
-                  '0xec63afc7c67678adbe7a60af04d49031878d1e78eff9758b1b79edeb7546dfdf'
-              ];
-              const isPoker = POKER_LOGIC_IDS.includes(match.game_logic?.toLowerCase());
-              
-              if (isPoker && mId) {
-                  // Deterministic shuffle using matchId as seed
-                  const seed = BigInt(keccak256(encodePacked(['string'], [mId])));
-                  let deck = Array.from({length: 52}, (_, i) => i);
-                  
-                  // Fisher-Yates shuffle with deterministic randomness
-                  for (let i = deck.length - 1; i > 0; i--) {
-                      const j = Number((seed + BigInt(i)) % BigInt(i + 1));
-                      [deck[i], deck[j]] = [deck[j], deck[i]];
-                  }
-                  
-                  // Deal 5 cards to each player
-                  const hands = updatedPlayers.map((_, i) => deck.slice(i * 5, (i * 5) + 5));
-                  
-                  updateData.state_description = JSON.stringify({
-                      hands,
-                      phase: 'DEALT',
-                      deckSeed: seed.toString(),
-                      msg: "Cards dealt. Choose cards to discard (0-4) or STAY (99)."
-                  });
-                  
-                  logger.info({ mId, hands }, 'Poker hands dealt for match');
-              }
-          }
-          
-          const { error } = await supabase.from('matches').update(updateData).eq('match_id', mId);
+          }).eq('match_id', mId);
           
           if (error) logger.error({ mId, error }, 'Failed to update MatchJoined');
           else logger.info({ mId, isFull }, 'Successfully updated MatchJoined');
