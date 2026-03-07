@@ -161,8 +161,8 @@ export default function MatchDetail({ params }: { params: Promise<{ id: string }
   const groupedRounds = (rounds || []).reduce((acc, r) => {
     if (!r || typeof r.round_number !== 'number') return acc;
     if (!acc[r.round_number]) acc[r.round_number] = { round: r.round_number, a: null, b: null, winner: r.winner };
-    if (r.player_index === 1) acc[r.round_number].a = r;
-    else if (r.player_index === 2) acc[r.round_number].b = r;
+    if (r.player_index === 0) acc[r.round_number].a = r;
+    else if (r.player_index === 1) acc[r.round_number].b = r;
     return acc;
   }, {} as Record<number, { round: number, a: Round | null, b: Round | null, winner: number }>);
 
