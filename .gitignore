@@ -26,3 +26,9 @@ out
 cache
 broadcast
 packages/falken-hype
+.env
+apps/dashboard/.env
+*.json
+!package.json
+!tsconfig.json
+!turbo.json
