@@ -350,6 +350,13 @@ export async function handleToolCall(name: string, args: any) {
       md += `- **Score:** ${match.wins.join(' - ')}\n`;
     }
     
+    // POKER HAND CALCULATION (Restoring the "Perfect" flow)
+    const isPoker = match.game_logic.toLowerCase() === "0xa00a45cb44b39c3dc91fb7963d2dd65c217ae5b25c20cb216c1f9431900a5d61";
+    if (isPoker && match.status === 'ACTIVE' && match.players) {
+      const hand = calculatePokerHand(dbId, match.current_round, playerAddress, match.players);
+      if (hand) md += `- **Your Hand:** \`${hand}\`\n`;
+    }
+
     md += `- **Stake:** ${stakeEth} USDC\n`;
     md += `- **Recommended Action:** **${nextAction}**\n\n`;
 
@@ -702,6 +709,32 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   logger.info('Handling ListTools request');
   return { tools: TOOLS };
 });
+
+function calculatePokerHand(matchId: string, round: number, playerAddress: string, players: string[]) {
+  const seedStr = `${matchId}_${round}`;
+  let hash = 0;
+  for (let i = 0; i < seedStr.length; i++) {
+    hash = ((hash << 5) - hash) + seedStr.charCodeAt(i);
+    hash |= 0;
+  }
+  const deck = Array.from({ length: 52 }, (_, i) => i);
+  for (let i = deck.length - 1; i > 0; i--) {
+    hash = (Math.imul(1664525, hash) + 1013904223) | 0;
+    const j = Math.abs(hash % (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+
+  const playerIdx = players.findIndex(p => p.toLowerCase() === playerAddress.toLowerCase());
+  if (playerIdx === -1) return null;
+
+  const handOffset = playerIdx * 5;
+  const rawHand = deck.slice(handOffset, handOffset + 5);
+
+  const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+  const suits = ['♣️', '♦️', '❤️', '♠️'];
+  
+  return rawHand.map(c => `${ranks[c % 13]}${suits[Math.floor(c / 13)]}`).join(' ');
+}
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
