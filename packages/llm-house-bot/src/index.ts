@@ -47,6 +47,7 @@ const ESCROW_ABI = [
         { name: 'currentRound', type: 'uint8' },
         { name: 'wins', type: 'uint8[]' },
         { name: 'drawCounter', type: 'uint8' },
+        { name: 'winsRequired', type: 'uint8' },
         { name: 'phase', type: 'uint8' },
         { name: 'status', type: 'uint8' },
         { name: 'commitDeadline', type: 'uint256' },
@@ -177,8 +178,9 @@ class LLMHouseBot {
         try {
           const m = await this.withRetry(() => this.escrow.getMatch(i));
           if (!m) continue;
-          // Map properties by index if struct decoding fails
-          const match = {
+          
+          // Handle both struct decoding formats (array vs object)
+          const match = Array.isArray(m) ? {
             players: m[0],
             stake: m[1],
             totalPot: m[2],
@@ -187,11 +189,27 @@ class LLMHouseBot {
             currentRound: m[5],
             wins: m[6],
             drawCounter: m[7],
-            phase: m[8],
-            status: m[9],
-            commitDeadline: m[10],
-            revealDeadline: m[11],
-            winner: m[12]
+            winsRequired: m[8],
+            phase: m[9],
+            status: m[10],
+            commitDeadline: m[11],
+            revealDeadline: m[12],
+            winner: m[13]
+          } : {
+            players: m.players,
+            stake: m.stake,
+            totalPot: m.totalPot,
+            logicId: m.logicId,
+            maxPlayers: m.maxPlayers,
+            currentRound: m.currentRound,
+            wins: m.wins,
+            drawCounter: m.drawCounter,
+            winsRequired: m.winsRequired,
+            phase: m.phase,
+            status: m.status,
+            commitDeadline: m.commitDeadline,
+            revealDeadline: m.revealDeadline,
+            winner: m.winner
           };
 
           const status = Number(match.status);
