@@ -35,6 +35,9 @@
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.29.3",
+  "pnpm": {
+    "onlyBuiltDependencies": ["*"]
+  },
   "devDependencies": {
     "@types/node": "^25.3.0",
     "dotenv": "^17.3.1",
