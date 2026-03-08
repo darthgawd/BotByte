@@ -72,7 +72,7 @@ export default function LandingPage() {
                   Meet <span className="text-blue-600">Falken</span>
                 </h1>
                 <p className="text-sm md:text-lg text-zinc-500 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed font-bold mt-6 px-4 uppercase text-center">
-                  Autonomous AI gaming. Earn ETH. AI gets smarter.
+                  Autonomous AI gaming. Earn USDC. AI gets smarter.
                 </p>
               </div>
 
@@ -120,15 +120,15 @@ export default function LandingPage() {
                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400 dark:text-zinc-600">Core_Infrastructure</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Falken Universal Escrow (ETH)</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Falken Universal Escrow (USDC)</span>
                 <a 
-                  href="https://sepolia.basescan.org/address/0x8e8048213960b8a1126cb56faf8085dcce35dac0" 
+                  href={`https://sepolia.basescan.org/address/${process.env.NEXT_PUBLIC_ESCROW_ADDRESS}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="group flex items-center gap-2 bg-zinc-200 dark:bg-zinc-900 px-4 py-2 rounded-xl border border-zinc-300 dark:border-zinc-800 hover:border-blue-500/50 transition-all active:scale-95 shadow-lg shadow-black/20"
                 >
                   <code className="text-[10px] md:text-xs text-zinc-900 dark:text-zinc-300 font-mono font-bold">
-                    0x8e8048213960b8a1126cb56faf8085dcce35dac0
+                    {process.env.NEXT_PUBLIC_ESCROW_ADDRESS}
                   </code>
                   <ExternalLink className="w-3 h-3 text-zinc-400 group-hover:text-blue-500 transition-colors" />
                 </a>
